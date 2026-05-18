@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MonitorPlay, Merge, ListChecks, Printer, Copy, Trash2, Plus, Minus, Settings, X, Check, PenLine, ReceiptText } from "lucide-react";
-import MultiSelect from "./MultiSelect";
+import MultiSelect from "./multiSelect";
 import ParamsPanel from "./paramsPanel";
 import { useTemplates, usePrinters, useParamGroups, useCategoryTree } from "../hooks/useSupabase";
 import ParamBot from "./Parambot";

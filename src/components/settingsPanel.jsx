@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MonitorPlay, Merge, ListChecks, Printer, Copy, Trash2, Plus, Minus, Settings, X, Check, PenLine, ReceiptText } from "lucide-react";
+import PrinterPicker from "./PrinterPicker";
 import MultiSelect from "./multiSelect";
 import ParamsPanel from "./paramsPanel";
 import { useTemplates, usePrinters, useParamGroups, useCategoryTree } from "../hooks/useSupabase";
@@ -213,12 +214,12 @@ export default function SettingsPanel({
   );
   const paramsColor = hasParams ? "#4caf50" : "#64748b";
 
-  const iconStyle = { display: "inline", verticalAlign: "middle", marginRight: 4 };
+  const iconStyle = { display: "inline", verticalAlign: "middle", marginLeft: 4 };
   const TABS = [
-    { id: "params", label: "פרמטרים", icon: <PenLine size={12} color={paramsColor} style={iconStyle} /> },
-    { id: "items",  label: "פריטים",  icon: itemsOk ? <Check size={12} color={itemsColor} style={iconStyle} /> : <X size={12} color={itemsColor} style={iconStyle} /> },
-    { id: "print",  label: "הדפסה",   icon: <Printer size={12} color={printerColor} style={iconStyle} /> },
     { id: "bon",    label: "הגדרות בון", icon: <Settings size={12} color={bonColor} style={iconStyle} /> },
+    { id: "print",  label: "הדפסה",   icon: <Printer size={12} color={printerColor} style={iconStyle} /> },
+    { id: "items",  label: "פריטים",  icon: itemsOk ? <Check size={12} color={itemsColor} style={iconStyle} /> : <X size={12} color={itemsColor} style={iconStyle} /> },
+    { id: "params", label: "פרמטרים", icon: <PenLine size={12} color={paramsColor} style={iconStyle} /> },
   ];
 
   return (
@@ -228,9 +229,9 @@ export default function SettingsPanel({
       {/* ── Topbar ── */}
       <div className="topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ReceiptText size={18} color="var(--bm)" />
+          <Settings size={20} color="var(--bm)" />
           <span style={{ fontSize: 22, fontWeight: 900, color: "var(--bd)", letterSpacing: -0.5 }}>
-            {bonName?.trim() || "בון חדש"}
+            הגדרת בון: {bonName?.trim() || "בון חדש"}
           </span>
         </div>
         {/* AI pill — doubles as bot header when open */}
@@ -285,7 +286,7 @@ export default function SettingsPanel({
       </div>
 
       {/* ── Tabs ── */}
-      <div className="tabs">
+      <div className="tabs" dir='rtl'>
         {TABS.map(t => (
           <div key={t.id} className={`tab${activeTab === t.id ? " on" : ""}`} onClick={() => setActiveTab(t.id)}>
             {t.icon}{t.label}
@@ -372,95 +373,11 @@ export default function SettingsPanel({
                   <div className="pr-sub">הבון ישלח למדפסות שנבחרו</div>
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {printers.length === 0 && (
-                  <div style={{ fontSize: 12, color: "#999", padding: "6px 0", direction: "rtl" }}>
-                    אין מדפסות מחוברות
-                  </div>
-                )}
-                {printers.map(p => {
-                  const checked = selectedPrinters.includes(p.id);
-                  return (
-                    <div key={p.id} onClick={() => setSelectedPrinters(prev =>
-                      checked ? prev.filter(id => id !== p.id) : [...prev, p.id]
-                    )} style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "8px 12px", borderRadius: 8, cursor: "pointer",
-                      border: `1.5px solid ${checked ? "#1D9E75" : "var(--bdr)"}`,
-                      background: checked ? "#f0fdf4" : "#fff",
-                      transition: "all .15s", direction: "rtl",
-                    }}>
-                      <Printer size={16} color={checked ? "#1D9E75" : "#aaa"} style={{ flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: checked ? "#166534" : "var(--bd)" }}>
-                          {p.name}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#888" }}>{p.type} — {p.ip}</div>
-                      </div>
-                      <div style={{
-                        width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                        border: `2px solid ${checked ? "#1D9E75" : "#ccc"}`,
-                        background: checked ? "#1D9E75" : "#fff",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {checked && <Check size={11} color="#fff" strokeWidth={3} />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{
-                borderRadius: 8, padding: "8px 12px", direction: "rtl",
-                border: `1.5px solid ${activePrinters.length > 0 ? "#4caf50" : "#f59e0b"}`,
-                background: activePrinters.length > 0 ? "#f0fdf4" : "#fffbeb",
-                fontSize: 11, lineHeight: 1.7,
-                color: activePrinters.length > 0 ? "#166534" : "#92400e",
-                transition: "all .2s",
-              }}>
-                {activePrinters.length > 0 ? (
-                  <>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>✓ הבון מחובר ל-{activePrinters.length} מדפסות</div>
-                    {activePrinters.map(p => (
-                      <div key={p.id} style={{ marginBottom: 2 }}>{p.name} — {p.type} — {p.ip}</div>
-                    ))}
-                  </>
-                ) : (
-                  <div>⚠ הבון אינו מחובר למדפסת</div>
-                )}
-              </div>
-            </div>
-
-            <div className="pr">
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={() => setCopies(c => Math.max(1, c - 1))} style={{
-                  width: 24, height: 24, borderRadius: 6, border: "1.5px solid var(--bdr)",
-                  background: "#f8fafb", cursor: "pointer", display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                }}>
-                  <Minus size={10} color="var(--bm)" />
-                </button>
-                <input
-                  type="number" min={1} max={10} value={copies}
-                  onChange={e => setCopies(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
-                  style={{
-                    width: 38, textAlign: "center", border: "1.5px solid var(--bdr)",
-                    borderRadius: 6, padding: "3px 4px", fontSize: 12,
-                    fontFamily: "var(--sans)", outline: "none",
-                  }}
-                />
-                <button onClick={() => setCopies(c => Math.min(10, c + 1))} style={{
-                  width: 24, height: 24, borderRadius: 6, border: "1.5px solid var(--bdr)",
-                  background: "#f8fafb", cursor: "pointer", display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                }}>
-                  <Plus size={10} color="var(--bm)" />
-                </button>
-              </div>
-              <div className="pr-l">
-                <div className="pr-lbl">מספר עותקים</div>
-                <div className="pr-sub">כמה עותקים יודפסו בכל הזמנה</div>
-              </div>
-              <Copy size={18} color="var(--bm)" style={{ flexShrink: 0, marginLeft: 12 }} />
+              <PrinterPicker
+                printers={printers}
+                selectedPrinters={selectedPrinters}
+                setSelectedPrinters={setSelectedPrinters}
+              />
             </div>
 
             <div className="pr">

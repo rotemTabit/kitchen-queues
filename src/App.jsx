@@ -33,7 +33,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .left .topbar{background:rgba(11,68,64,.6);border-bottom:1px solid rgba(255,255,255,.1)}
 .right .topbar{background:#fff}
 .tb-brand{display:flex;align-items:center;gap:8px}
-.tb-title{font-weight:700;font-size:16px;color:rgba(255, 255, 255);padding: 2px 2px;}
+.tb-title{font-weight:700;font-size:20px;color:rgba(255, 255, 255);padding: 2px 2px;}
 .tb-badge{font-size:14px;font-weight:700;padding:2px 18px;border-radius:20px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2)}
 .tb-icon{font-size:20px;font-weight:700;padding:2px 2px;color:white;}
 .tb-btns{display:flex;gap:6px;align-items:center}
@@ -225,6 +225,8 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .prev::-webkit-scrollbar-thumb{background:rgba(115,222,215,.4);border-radius:3px}
 .ctx-panel-body::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
 .no-template{color:#f59e0b}
+.input-white::placeholder{color:white;}
+.input-white{color:white;}
 `;
 
 // ══════════════════════════════════════════════════════════
@@ -466,6 +468,13 @@ export default function App() {
     return () => document.removeEventListener("click", handler);
   }, []);
 
+  const TEMPLATE_NAMES = {
+  general:  'בון כללי',
+  allday:   'כל היום',
+  peritem:  'נפרד לכל פריט',
+  perdiner: 'לפי סועדים',
+};
+
   return (
     <>
       <style>{CSS}</style>
@@ -518,12 +527,21 @@ export default function App() {
                 <Save size={12}/> שמירה
               </button>
             </div>
-                        <div className="tb-brand">
-              
-              <span className="tb-title">תצוגה מקדימה</span>
-              <span className="tb-icon">:{bonName || "בון כללי"}</span>
-              <ReceiptText size={20} color="white" />
-            </div>
+              <div className="tb-brand" dir='rtl'>
+                <ReceiptText size={20} color="white" />
+                <span className="tb-title">
+                  {bonName || 'בון כללי'}: תצוגה מקדימה
+                  {template ? (
+                    <span style={{ fontWeight: 400, opacity: 0.7, fontSize: 13, marginRight: 6 }}>
+                      ({TEMPLATE_NAMES[template] || template})
+                    </span>
+                  ) : (
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#f59e0b', marginRight: 6 }}>
+                      נא לבחור תבנית הדפסה
+                    </span>
+                  )}
+                </span>
+              </div>
           </div>
 
           <OtBar

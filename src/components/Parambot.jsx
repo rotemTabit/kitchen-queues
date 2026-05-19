@@ -504,6 +504,12 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
   const [typing, setTyping]     = useState(false);
   const [done, setDone]         = useState(false);
   const [typingMsg, setTypingMsg] = useState(null); // {id, text, progress}
+  const [pendingPrinters, setPendingPrinters] = useState([]);
+  const [stepStack, setStepStack] = useState([]);
+  const [selectedSubCats, setSelectedSubCats] = useState([]);
+  const [currentCatId, setCurrentCatId] = useState(null);
+  const [itemQuery, setItemQuery] = useState('');
+  const [selectedItems, setSelectedItems] = useState([]);
   const bottomRef               = useRef(null);
   const msgId                   = useRef(1);
   const typingRef               = useRef(null);
@@ -518,6 +524,19 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
   }, [messages, typing]);
 
   const delay = () => 500 + Math.random() * 1000;
+
+  const pushStep = (newStep) => {
+    setStepStack(prev => [...prev, step]);
+    setStep(newStep);
+  };
+
+  const goBack = () => {
+    if (stepStack.length === 0) return;
+    const prev = stepStack[stepStack.length - 1];
+    setStepStack(s => s.slice(0, -1));
+    setStep(prev);
+    setDone(false);
+  };
 
   const botSay = (text, stepKey, recoParams) => {
     setTyping(true);
@@ -582,43 +601,141 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
       if (!printers || printers.length === 0) {
         botSay('לא נמצאו מדפסות בבסיס הנתונים.', step);
       } else {
-        setStep('_editPrinters');
-        botSay('בחר את המדפסות שהבון ישלח אליהן:', '_editPrinters');
+        setPendingPrinters([...(selectedPrinters || [])]);
+        pushStep('_editPrinters');
+        botSay('בחר את המדפסות שהבון ישלח אליהן — סמן כמה שתרצה ואשר:', '_editPrinters');
       }
 
-    } else if (opt.action === '_togglePrinter' && setSelectedPrinters) {
-      const already = (selectedPrinters || []).includes(opt.value);
-      const next = already
-        ? selectedPrinters.filter(id => id !== opt.value)
-        : [...(selectedPrinters || []), opt.value];
-      setSelectedPrinters(next);
-      const names = printers.filter(p => next.includes(p.id)).map(p => p.name).join(', ') || 'ללא';
-      botSay('✓ מדפסות מחוברות: ' + names, 'done_msg');
+    } else if (opt.action === '_togglePrinter') {
+      // Toggle inside pending — don't apply yet
+      setPendingPrinters(prev =>
+        prev.includes(opt.value) ? prev.filter(id => id !== opt.value) : [...prev, opt.value]
+      );
+      return; // stay in step, don't advance
+
+    } else if (opt.action === '_confirmPrinters' && setSelectedPrinters) {
+      setSelectedPrinters(pendingPrinters);
+      const names = printers.filter(p => pendingPrinters.includes(p.id)).map(p => p.name).join(', ') || 'ללא';
+      botSay('✓ מדפסות עודכנו: ' + names, 'done_msg');
       setDone(true);
 
     } else if (opt.action === 'addCategory') {
       if (!tree || tree.length === 0) {
         botSay('לא נמצאו קטגוריות. בדוק שהתפריט טעון.', step);
       } else {
-        setStep('_addCategory');
-        botSay('איזו קטגוריה להוסיף לתצוגה?', '_addCategory');
+        pushStep('_pickDivision');
+        botSay('בחר מחלקה:', '_pickDivision');
       }
 
+    } else if (opt.action === '_pickDivision') {
+      // tree is nested: [{id, name, children:[...], items:[...]}]
+      // find the division node and look at its children
+      const findNode = (nodes, id) => {
+        for (const n of nodes) {
+          if (n.id === id) return n;
+          const found = findNode(n.children || [], id);
+          if (found) return found;
+        }
+        return null;
+      };
+      const divNode = findNode(tree || [], opt.value);
+      const children = divNode?.children || [];
+      if (children.length === 0) {
+        setCurrentCatId(opt.value);
+        setSelectedSubCats([]);
+        pushStep('_pickSubCats');
+        botSay(`בחר תתי-קטגוריות מ״${opt.label}״ (ניתן לבחור כמה):`, '_pickSubCats');
+      } else {
+        setCurrentCatId(opt.value);
+        pushStep('_pickCategory');
+        const d = delay();
+        setTyping(true);
+        setTimeout(() => {
+          setTyping(false);
+          setMessages(m => [...m, { id: msgId.current++, from:'bot',
+            text: `בחר קטגוריה מ״${opt.label}״:`, step: '_pickCategory',
+            _divisionId: opt.value, ts: Date.now() }]);
+        }, d);
+      }
+
+    } else if (opt.action === '_pickCategory') {
+      const findNode = (nodes, id) => {
+        for (const n of nodes) {
+          if (n.id === id) return n;
+          const found = findNode(n.children || [], id);
+          if (found) return found;
+        }
+        return null;
+      };
+      const catNode = findNode(tree || [], opt.value);
+      const children = catNode?.children || [];
+      setCurrentCatId(opt.value);
+      setSelectedSubCats([]);
+      if (children.length === 0) {
+        onParamChange('INC_CATS', [...(params['INC_CATS'] || []), opt.value]);
+        botSay(`✓ הקטגוריה ״${opt.label}״ נוספה לתצוגה.`, 'done_msg');
+        setDone(true);
+      } else {
+        pushStep('_pickSubCats');
+        botSay(`בחר תתי-קטגוריות מ״${opt.label}״ (ניתן לבחור כמה):`, '_pickSubCats');
+      }
+
+    } else if (opt.action === '_toggleSubCat') {
+      setSelectedSubCats(prev =>
+        prev.includes(opt.value) ? prev.filter(id => id !== opt.value) : [...prev, opt.value]
+      );
+      return;
+
+    } else if (opt.action === '_selectAllSubCats') {
+      const children = (tree || []).filter(c => c.parent_id === currentCatId || c.parentId === currentCatId);
+      setSelectedSubCats(children.map(c => c.id));
+      return;
+
+    } else if (opt.action === '_confirmSubCats') {
+      if (selectedSubCats.length === 0) {
+        botSay('לא נבחרו תתי-קטגוריות. בחר לפחות אחת.', step);
+        return;
+      }
+      const cur = params['INC_CATS'] || [];
+      onParamChange('INC_CATS', [...cur, ...selectedSubCats.filter(id => !cur.includes(id))]);
+      botSay(`✓ ${selectedSubCats.length} קטגוריות נוספו לתצוגה.`, 'done_msg');
+      setDone(true);
+
     } else if (opt.action === '_selectCategory') {
-      const newItems = (flatItems || []).filter(i => i.category_id === opt.value);
+      // legacy fallback
       onParamChange('INC_CATS', [...(params['INC_CATS'] || []), opt.value]);
-      botSay(`✓ ${newItems.length} פריטים מ״${opt.label}״ נוספו לתצוגה.`, 'done_msg');
+      botSay(`✓ הקטגוריה ״${opt.label}״ נוספה לתצוגה.`, 'done_msg');
       setDone(true);
 
     } else if (opt.action === 'addItems') {
       if (!flatItems || flatItems.length === 0) {
         botSay('לא נמצאו פריטים. בדוק שהתפריט טעון.', step);
       } else {
-        setStep('_addItems');
-        botSay('חפש פריט לפי שם — בחר מהרשימה:', '_addItems');
+        setItemQuery('');
+        setSelectedItems([]);
+        pushStep('_addItems');
+        botSay('הקלד שם פריט לחיפוש, בחר פריטים ואשר:', '_addItems');
       }
 
+    } else if (opt.action === '_toggleItem') {
+      setSelectedItems(prev =>
+        prev.includes(opt.value) ? prev.filter(id => id !== opt.value) : [...prev, opt.value]
+      );
+      return;
+
+    } else if (opt.action === '_confirmItems') {
+      if (selectedItems.length === 0) {
+        botSay('לא נבחרו פריטים. בחר לפחות אחד.', step);
+        return;
+      }
+      const cur = params['INC_ITEMS'] || [];
+      onParamChange('INC_ITEMS', [...cur, ...selectedItems.filter(id => !cur.includes(id))]);
+      const names = flatItems.filter(i => selectedItems.includes(i.id)).map(i => i.name).join(', ');
+      botSay(`✓ ${selectedItems.length} פריטים נוספו: ${names}`, 'done_msg');
+      setDone(true);
+
     } else if (opt.action === '_selectItem') {
+      // legacy
       onParamChange('INC_ITEMS', [...(params['INC_ITEMS'] || []), opt.value]);
       botSay(`✓ הפריט ״${opt.label}״ נוסף לתצוגה.`, 'done_msg');
       setDone(true);
@@ -636,11 +753,11 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
       setDone(true);
 
     } else if (opt.action === 'setOrderTypes') {
-      setStep('_setOrderTypes');
+      pushStep('_setOrderTypes');
       botSay('סמן את סוגי ההזמנה שתרצה להציג:', '_setOrderTypes');
 
     } else if (opt.action === 'setSources') {
-      setStep('_setSources');
+      pushStep('_setSources');
       botSay('סמן את מקורות ההזמנה שתרצה להציג:', '_setSources');
 
     } else if (opt.action === 'showActive') {
@@ -661,7 +778,7 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
       botSay('הנה הפרמטרים הכי מתאימים לצרכים שלך:', 'reco', opt.params);
 
     } else if (opt.next && FLOW[opt.next]) {
-      setStep(opt.next);
+      pushStep(opt.next);
       botSay(FLOW[opt.next].q, opt.next);
     }
   };
@@ -669,22 +786,48 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
   // ── Dynamic option lists (printers / categories / items / OT / SRC) ──
   const dynamicOpts = () => {
     if (step === '_editPrinters')
-      return printers.map(p => ({
-        lbl: `${selectedPrinters.includes(p.id) ? '✓' : '○'} ${p.name} — ${p.type}`,
-        action: '_togglePrinter', value: p.id, label: p.name,
-      }));
+      return [
+        ...printers.map(p => ({
+          lbl: `${pendingPrinters.includes(p.id) ? '✓' : '○'} ${p.name} — ${p.type}`,
+          action: '_togglePrinter', value: p.id, label: p.name,
+          active: pendingPrinters.includes(p.id),
+        })),
+        { lbl: '💾 אשר בחירה', action: '_confirmPrinters', isConfirm: true },
+      ];
     if (step === '_choosePrinter')
       return (printers || []).map(p => ({
         lbl: `${p.name} — ${p.type}`, action: '_selectPrinter', value: p.id, label: p.name,
       }));
-    if (step === '_addCategory')
-      return (tree || []).map(cat => ({
-        lbl: cat.name, action: '_selectCategory', value: cat.id, label: cat.name,
-      }));
+    if (step === '_pickDivision') {
+      // tree is already top-level nodes (parent_id=null)
+      return (tree || []).map(c => ({ lbl: c.display || c.name, action: '_pickDivision', value: c.id, label: c.display || c.name }));
+    }
+    if (step === '_pickCategory') {
+      // currentCatId holds the division id
+      const findNode = (nodes, id) => {
+        for (const n of nodes) { if (n.id === id) return n; const f = findNode(n.children||[],id); if(f) return f; } return null;
+      };
+      const divNode = findNode(tree || [], currentCatId);
+      const cats = divNode?.children || [];
+      return cats.map(c => ({ lbl: c.display || c.name, action: '_pickCategory', value: c.id, label: c.display || c.name }));
+    }
+    if (step === '_pickSubCats') {
+      const findNode = (nodes, id) => {
+        for (const n of nodes) { if (n.id === id) return n; const f = findNode(n.children||[],id); if(f) return f; } return null;
+      };
+      const catNode = findNode(tree || [], currentCatId);
+      const subCats = catNode?.children || [];
+      return [
+        { lbl: 'בחר הכל', action: '_selectAllSubCats', isSelectAll: true },
+        ...subCats.map(c => ({
+          lbl: c.name, action: '_toggleSubCat', value: c.id, label: c.name,
+          active: selectedSubCats.includes(c.id),
+        })),
+        { lbl: `✓ אשר (${selectedSubCats.length})`, action: '_confirmSubCats', isConfirm: true },
+      ];
+    }
     if (step === '_addItems')
-      return (flatItems || []).slice(0, 40).map(item => ({
-        lbl: item.name, action: '_selectItem', value: item.id, label: item.name,
-      }));
+      return null; // handled by search UI below
     if (step === '_setOrderTypes') {
       const OT = [
         { value:'SEATED', label:'ישיבה' }, { value:'TA', label:'טייק אווי' },
@@ -725,6 +868,7 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
     const initMsg = { id:0, from:'bot', text: FLOW.start.q, step:'start', ts: Date.now() };
     setMessages([initMsg]);
     setStep('start');
+    setStepStack([]);
     setTyping(false);
     setDone(false);
     msgId.current = 1;
@@ -733,7 +877,7 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
 
   const current = FLOW[step];
   const lastBotStep = [...messages].reverse().find(m => m.from === 'bot')?.step;
-  const showOpts = !typing && !done && lastBotStep === step;
+  const showOpts = !typing;
 
   const S = {
     wrap: {
@@ -838,8 +982,8 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
                 marginBottom: 8,
               }}>
                 <div style={isUser ? S.userBubble : S.botBubble}>
-                  {msg.text.split('\n').map((line, i, arr) => (
-                    <span key={i}>{line}{i < arr.length-1 && <br/>}</span>
+                  {(msg.text || '').split('\n').map((line, i, arr) => (
+                    <span key={`${msg.id}-${i}`}>{line}{i < arr.length-1 && <br/>}</span>
                   ))}
                 </div>
                 {msg.recoParams && (
@@ -870,8 +1014,102 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
           <div ref={bottomRef} />
         </div>
 
-        {/* Options */}
+        {/* Options — always visible when not typing */}
         {showOpts && (() => {
+          // ── Always-available done/restart pills ──
+          const canGoBack = stepStack.length > 0 && !done;
+          const donePills = (
+            <div style={{ display:'flex', gap:6, marginTop: done ? 0 : 6,
+                          borderTop: done ? 'none' : '0.5px solid var(--bdr)',
+                          paddingTop: done ? 0 : 8, flexWrap:'wrap' }}>
+              {canGoBack && (
+                <span style={{
+                  ...S.pill(false),
+                  background:'#f0f0f0', color:'#555', borderColor:'#ddd',
+                }} onClick={goBack}>← חזור</span>
+              )}
+              <span style={{
+                ...S.pill(false),
+                background:'var(--ba)', color:'#fff', borderColor:'var(--ba)', fontWeight:600,
+              }} onClick={reset}>↺ שאלה נוספת</span>
+              <span style={{
+                ...S.pill(false),
+                background:'#f5f5f5', color:'#555', borderColor:'#ddd',
+              }} onClick={onClose}>סגור</span>
+            </div>
+          );
+
+          // ── Item search UI ──
+          if (step === '_addItems' && !done) {
+            const results = itemQuery.trim().length >= 1
+              ? (flatItems || []).filter(i => i.name.toLowerCase().includes(itemQuery.toLowerCase())).slice(0, 30)
+              : [];
+            return (
+              <div style={S.opts}>
+                <div style={{ display:'flex', alignItems:'center', gap:6,
+                              background:'var(--bm)', border:'1px solid var(--bdr)',
+                              borderRadius:8, padding:'5px 9px', marginBottom:6 }}>
+                  <input
+                    type="text"
+                    placeholder="חפש פריט..."
+                    value={itemQuery}
+                    onChange={e => setItemQuery(e.target.value)}
+                    style={{ flex:1, border:'none', background:'transparent', fontSize:12,
+                             outline:'none', color:'var(--bd)', direction:'rtl' }}
+                  />
+                </div>
+                {results.length > 0 && (
+                  <div style={{ maxHeight:140, overflowY:'auto', borderRadius:8,
+                                border:'1px solid var(--bdr)', marginBottom:6 }}>
+                    {results.map((item) => {
+                      const sel = selectedItems.includes(item.id);
+                      return (
+                        <div key={item.id}
+                          onClick={() => setSelectedItems(prev =>
+                            prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
+                          )}
+                          style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px',
+                                   cursor:'pointer', fontSize:12, direction:'rtl',
+                                   borderBottom: '1px solid var(--bdr)',
+                                   background: sel ? '#f0fdf4' : 'var(--bg)' }}>
+                          <div style={{ width:15, height:15, borderRadius:4, flexShrink:0,
+                                        border:`2px solid ${sel ? '#1D9E75' : '#ccc'}`,
+                                        background: sel ? '#1D9E75' : '#fff',
+                                        display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            {sel && <span style={{ color:'#fff', fontSize:9, lineHeight:1 }}>✓</span>}
+                          </div>
+                          <span style={{ color: sel ? '#166534' : 'var(--bd)', fontWeight: sel ? 600 : 400 }}>
+                            {item.name}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {itemQuery.trim().length >= 1 && results.length === 0 && (
+                  <div style={{ fontSize:12, color:'#999', padding:'6px 2px' }}>לא נמצאו פריטים</div>
+                )}
+                {selectedItems.length > 0 && (
+                  <button style={S.confirmBtn}
+                    onClick={() => handleOpt({ action:'_confirmItems' })}>
+                    הוסף {selectedItems.length} פריטים ✓
+                  </button>
+                )}
+                {donePills}
+              </div>
+            );
+          }
+
+          // ── After done: just restart/close ──
+          if (done) {
+            return (
+              <div style={S.opts}>
+                {donePills}
+              </div>
+            );
+          }
+
+          // ── Dynamic opts (printers, categories, OT, sources) ──
           const dynOpts = dynamicOpts();
           const isToggle = step === '_setOrderTypes' || step === '_setSources';
           if (dynOpts) return (
@@ -879,15 +1117,23 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
               <div style={{ display:'flex', flexWrap:'wrap' }}>
                 {dynOpts.map(opt => (
                   <span key={opt.lbl}
-                    style={S.pill(!!opt.active)}
+                    style={{
+                      ...S.pill(!!opt.active),
+                      ...(opt.isConfirm ? { background:'var(--ba)', color:'#fff', borderColor:'var(--ba)', fontWeight:600 } : {}),
+                      ...(opt.isSelectAll ? { background:'#f0f0f0', color:'var(--bd)' } : {}),
+                    }}
                     onClick={() => isToggle ? handleDynamicToggle(opt.action, opt.value) : handleOpt(opt)}>
-                    {opt.active ? '✓ ' : ''}{opt.lbl}
+                    {opt.lbl}
                   </span>
                 ))}
               </div>
               {isToggle && <button style={S.confirmBtn} onClick={handleDynamicConfirm}>אשר בחירה ✓</button>}
+              {donePills}
             </div>
           );
+
+          // ── Static FLOW opts ──
+          if (!current?.opts) return <div style={S.opts}>{donePills}</div>;
           return (
             <div style={S.opts}>
               <div style={{ display:'flex', flexWrap:'wrap' }}>
@@ -901,22 +1147,7 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
           );
         })()}
 
-        {/* After done */}
-        {done && !typing && (
-          <div style={{ flexShrink:0, padding:'10px 14px', background:'#fff',
-                        borderTop:'1px solid #eee', display:'flex', gap:8 }}>
-            <button onClick={reset} style={{
-              flex:1, padding:'9px', borderRadius:8, background:'var(--ba)',
-              color:'#fff', border:'none', cursor:'pointer', fontSize:13,
-              fontWeight:600, fontFamily:'var(--sans)',
-            }}>↺ שאלה נוספת</button>
-            <button onClick={onClose} style={{
-              flex:1, padding:'9px', borderRadius:8, background:'#eee',
-              color:'#333', border:'none', cursor:'pointer', fontSize:13,
-              fontFamily:'var(--sans)',
-            }}>סגור</button>
-          </div>
-        )}
+
       </div>
     </>
   );

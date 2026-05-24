@@ -7,9 +7,14 @@ const PencilIcon = () => (
   </svg>
 );
 
-const FOOTER_IDS = ['ft_tbl','ft_r1','ft_r2','ft_r3','ft_ta','ft_srv','ft_time','ft_bname','main_s'];
-const HEADER_IDS = ['bon_name','hdr_tbl','ta_r','ta_h','dl_r','dl_h','rp1','rp2','rp3','rp_s','ord_no','ord_nm','info','date','hdr_s','bt_','otc_'];
-const LABELS = { header: 'ראש הבון', items: 'פריטים ומשנים', footer: 'תחתית הבון' };
+const SettingsIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+);
+
+const LABELS = { general: 'הגדרות כלליות', header: 'ראש הבון', items: 'פריטים ומשנים', footer: 'תחתית הבון' };
 
 export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen }) {
   const [positions, setPositions] = useState({});
@@ -34,9 +39,18 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
     const cRect = c.getBoundingClientRect();  // scroll container
 
     const bonFitsInContainer = pRect.height <= cRect.height;
-    const btnX = pRect.left - 40;
+
+    // כפתורי ראש/פריטים/תחתית — משמאל לבון
+    const leftBtnX = pRect.left - 40;
+    // כפתור general — מימין לבון
+    const rightBtnX = pRect.right + 14;
 
     const newPos = {};
+
+    // ── כפתור general: תמיד באמצע הבון אנכית ──
+    const bonMidY = (pRect.top + pRect.bottom) / 2;
+    const clampedMidY = Math.max(cRect.top + 20, Math.min(cRect.bottom - 20, bonMidY));
+    newPos.general = { x: rightBtnX, y: clampedMidY, mode: 'fixed', side: 'right' };
 
     if (bonFitsInContainer) {
       // ── BON FITS: buttons follow actual zone positions, clamped to bon ──
@@ -51,7 +65,7 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
 
         // clamp to bon paper bounds
         y = Math.max(pRect.top + 14, Math.min(pRect.bottom - 14, y));
-        newPos[zone] = { x: btnX, y, mode: 'fixed' };
+        newPos[zone] = { x: leftBtnX, y, mode: 'fixed', side: 'left' };
       });
     } else {
       // ── BON OVERFLOWS: buttons pin to container top / center / bottom ──
@@ -59,9 +73,9 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
       const bottom = cRect.bottom - 24;
       const mid    = (cRect.top + cRect.bottom) / 2;
 
-      if (buckets.header.length)  newPos.header  = { x: btnX, y: top,    mode: 'fixed' };
-      if (buckets.items.length)   newPos.items   = { x: btnX, y: mid,    mode: 'fixed' };
-      if (buckets.footer.length)  newPos.footer  = { x: btnX, y: bottom, mode: 'fixed' };
+      if (buckets.header.length)  newPos.header  = { x: leftBtnX, y: top,    mode: 'fixed', side: 'left' };
+      if (buckets.items.length)   newPos.items   = { x: leftBtnX, y: mid,    mode: 'fixed', side: 'left' };
+      if (buckets.footer.length)  newPos.footer  = { x: leftBtnX, y: bottom, mode: 'fixed', side: 'left' };
     }
 
     setPositions(newPos);
@@ -84,38 +98,61 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
     };
   }, [calculate, containerRef]);
 
-  return Object.entries(positions).map(([zone, pos]) => (
-    <div key={zone} style={{ position: 'fixed', top: 0, left: 0, pointerEvents: 'none', zIndex: 80 }}>
-      {hovered === zone && (
-        <div style={{
-          position: 'fixed', top: pos.y, left: pos.x - 8,
-          transform: 'translateY(-50%) translateX(-100%)',
-          background: 'rgba(11,68,64,.92)', color: 'var(--ba)',
-          fontFamily: 'var(--sans)', fontSize: '11px', fontWeight: 700,
-          padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap',
-          boxShadow: '0 2px 8px rgba(0,0,0,.3)', pointerEvents: 'none',
-        }}>
-          {LABELS[zone]}
-        </div>
-      )}
-      <button
-        onMouseEnter={() => setHovered(zone)}
-        onMouseLeave={() => setHovered(null)}
-        onClick={() => onOpen(zone)}
-        style={{
-          position: 'fixed', top: pos.y, left: pos.x,
-          transform: 'translateY(-50%)',
-          width: 30, height: 30, borderRadius: '50%',
-          border: '1.5px solid var(--ba)',
-          background: ctxZone === zone ? 'var(--ba)' : 'var(--bm)',
-          color:      ctxZone === zone ? 'var(--bd)' : 'var(--ba)',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all .18s', boxShadow: '0 2px 8px rgba(0,0,0,.3)',
-          pointerEvents: 'auto', zIndex: 500,
-        }}
-      >
-        <PencilIcon />
-      </button>
-    </div>
-  ));
+  return Object.entries(positions).map(([zone, pos]) => {
+    const isGeneral = zone === 'general';
+    const isActive  = ctxZone === zone;
+
+    return (
+      <div key={zone} style={{ position: 'fixed', top: 0, left: 0, pointerEvents: 'none', zIndex: 80 }}>
+
+        {/* Tooltip */}
+        {hovered === zone && (
+          <div style={{
+            position: 'fixed',
+            top: pos.y,
+            // general — טולטיפ משמאל לכפתור; שאר — מימין לכפתור
+            ...(isGeneral
+              ? { left: pos.x + (isGeneral ? 44 : 0), transform: 'translateY(-50%)' }
+              : { left: pos.x - 8, transform: 'translateY(-50%) translateX(-100%)' }
+            ),
+            background: 'rgba(11,68,64,.92)', color: 'var(--ba)',
+            fontFamily: 'var(--sans)', fontSize: '11px', fontWeight: 700,
+            padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap',
+            boxShadow: '0 2px 8px rgba(0,0,0,.3)', pointerEvents: 'none',
+          }}>
+            {LABELS[zone]}
+          </div>
+        )}
+
+        {/* Button */}
+        <button
+          onMouseEnter={() => setHovered(zone)}
+          onMouseLeave={() => setHovered(null)}
+          onClick={() => onOpen(zone)}
+          style={{
+            position: 'fixed',
+            top: pos.y,
+            left: pos.x,
+            transform: 'translateY(-50%)',
+            // general — גדול יותר, עגול פחות
+            width:  isGeneral ? 36 : 30,
+            height: isGeneral ? 36 : 30,
+            borderRadius: isGeneral ? '10px' : '50%',
+
+            background: isActive ? 'var(--ba)' : 'var(--bm)',
+            color:      isActive ? 'var(--bd)' : 'var(--ba)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .18s',
+            boxShadow: isGeneral
+              ? '0 2px 12px rgba(0,0,0,.35)'
+              : '0 2px 8px rgba(0,0,0,.3)',
+            pointerEvents: 'auto', zIndex: 500,
+          }}
+        >
+          {isGeneral ? <SettingsIcon /> : <PencilIcon />}
+        </button>
+      </div>
+    );
+  });
 }

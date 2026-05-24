@@ -6,6 +6,8 @@ import {
   useModifierGroups, useIgGroups,
 } from '../hooks/useSupabase';
 
+const GENERAL_ZONE = 'general';
+
 const findParam = (id, zone) => {
   for (const cat of Object.values(zone.cats))
     for (const p of cat) if (p.id === id) return p;
@@ -83,7 +85,7 @@ function MultiParam({ p, params, onParamChange }) {
 }
 
 // ── Single param row ──────────────────────────────────────────────────────
-function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
+function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = false, onBonFlash }) {
   const isEnabled = p.type === 'multi'
     ? (params[p.id] || []).length > 0
     : !!params[p.id];
@@ -91,6 +93,12 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
   const children = (p.children || [])
     .map(cid => findParam(cid, zone))
     .filter(Boolean);
+
+  const handleChange = (id, val) => {
+    onParamChange(id, val);
+    // כפתור general — מבהב את כל הבון
+    if (isGeneral && onBonFlash) onBonFlash();
+  };
 
   return (
     <>
@@ -100,7 +108,7 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
           marginRight: indent * 14,
           borderRight: indent > 0 ? '2px solid var(--ba)' : 'none',
           paddingRight: indent > 0 ? 10 : 0,
-          opacity: 1,  // never disabled — noImpl just means no preview effect
+          opacity: 1,
         }}
       >
         <div className="ctx-pr-lbl">
@@ -121,20 +129,20 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
             <input
               type="number" min={1} max={10}
               value={params[p.id] || 0}
-              onChange={e => onParamChange(p.id, parseInt(e.target.value) || 0)}
+              onChange={e => handleChange(p.id, parseInt(e.target.value) || 0)}
               style={{ width: 54, textAlign: 'center', border: '1.5px solid var(--ba)',
                        borderRadius: 6, padding: '3px 4px', background: 'var(--bm)',
                        color: 'var(--bd)', fontFamily: 'var(--mono)', fontSize: 13 }}
             />
           ) : p.type === 'multi' ? (
             <div style={{ minWidth: 160, maxWidth: 200 }}>
-              <MultiParam p={p} params={params} onParamChange={onParamChange} />
+              <MultiParam p={p} params={params} onParamChange={(id, val) => handleChange(id, val)} />
             </div>
           ) : p.type === 'text' ? (
             <input
               type="text"
               value={params[p.id] || ''}
-              onChange={e => onParamChange(p.id, e.target.value)}
+              onChange={e => handleChange(p.id, e.target.value)}
               placeholder="הזן ערך"
               style={{ width: 130, fontSize: 11, padding: '3px 7px',
                        border: '1.5px solid var(--ba)', borderRadius: 5,
@@ -145,7 +153,7 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
               <input
                 type="checkbox"
                 checked={!!params[p.id]}
-                onChange={e => onParamChange(p.id, e.target.checked)}
+                onChange={e => handleChange(p.id, e.target.checked)}
               />
               <div className="tg-tr" />
               <div className="tg-th" />
@@ -162,6 +170,8 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
           onParamChange={onParamChange}
           zone={zone}
           indent={indent + 1}
+          isGeneral={isGeneral}
+          onBonFlash={onBonFlash}
         />
       ))}
     </>
@@ -169,12 +179,14 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0 }) {
 }
 
 // ── Main panel ────────────────────────────────────────────────────────────
-export default function CtxPanel({ zone, onClose, params, onParamChange, template }) {
+// onBonFlash — callback שמבהב את כל הבון (מועבר מ-App כשzone==='general')
+export default function CtxPanel({ zone, onClose, params, onParamChange, template, onBonFlash }) {
   const [openCats, setOpenCats] = useState({});
   const [query, setQuery]       = useState('');
   const [activeFilter, setFilter] = useState(null);
 
   const def = zone ? CTX_ZONES[zone] : null;
+  const isGeneral = zone === GENERAL_ZONE;
 
   const isSearching = query.trim() || activeFilter;
 
@@ -209,10 +221,15 @@ export default function CtxPanel({ zone, onClose, params, onParamChange, templat
 
   return (
     <div className={`ctx-panel${zone ? ' open' : ''}`}>
-      <div className="ctx-panel-hdr">
+      <div className="ctx-panel-hdr" style={isGeneral ? { background: 'var(--bm)', borderBottom: '2px solid var(--ba)' } : {}}>
         <button className="ctx-panel-back" onClick={onClose}>✕</button>
-        <span className="ctx-panel-title">{def.title}</span>
+        <span className="ctx-panel-title">
+
+          {def.title}
+        </span>
       </div>
+
+
       <div style={{ padding: '8px 12px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
         <ParamSearch
           query={query}
@@ -241,6 +258,8 @@ export default function CtxPanel({ zone, onClose, params, onParamChange, templat
                   onParamChange={onParamChange}
                   zone={def}
                   indent={0}
+                  isGeneral={isGeneral}
+                  onBonFlash={isGeneral ? onBonFlash : undefined}
                 />
               ))}
             </div>

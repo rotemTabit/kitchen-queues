@@ -47,10 +47,10 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .ot-btn{padding:4px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.7);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .15s}
 .ot-btn:hover{background:rgba(255,255,255,.1);color:#fff}
 .ot-btn.active{background:var(--ba);border-color:var(--ba);color:var(--bd);font-weight:700}
-.prev{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;background:var(--bgpreview);position:relative}
+.prev{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;background:#e3e1e1;position:relative}
 .prev-controls{width:290px;display:flex;gap:6px;align-items:center}
-.preview-item-btn{flex:1;padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);cursor:pointer;font-size:11px;font-family:var(--sans);color:#DEFCEE;font-weight:500;display:flex;align-items:center;gap:5px;transition:all .15s;justify-content:center}
-.preview-item-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4)}
+.preview-item-btn{flex:1;padding:6px 10px;border-radius:6px;border:1px solid rgba(0,0,0,1);background:rgba(255,255,255,1);cursor:pointer;font-size:11px;font-family:var(--sans);color:#000000;font-weight:500;display:flex;align-items:center;gap:5px;transition:all .15s;justify-content:center}
+.preview-item-btn:hover{background:#0B4440;color:white;border-color:rgba(255,255,255,.4)}
 .chips-area{width:290px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .chips-bar{display:flex;flex-wrap:wrap;gap:4px;flex:1}
 .pi-chip{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-family:var(--sans);cursor:pointer;border:1px solid rgba(255,255,255,.2)}
@@ -310,6 +310,7 @@ export default function App() {
   const [isDirty, setIsDirty]     = useState(false);
   const [toast, setToast]         = useState(null);
   const snapshotRef               = useRef(null);
+  const [refreshHovered, setRefreshHovered] = useState(false);
 
   useEffect(() => {
     const current = JSON.stringify({ bonName, template, params, orderTypes, sources });
@@ -575,19 +576,33 @@ export default function App() {
               </div>
               {/* Row 2: status + refresh */}
               {allEnriched.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)", fontFamily: "var(--sans)" }}>
-                    {userSelected ? "מציג פריטים שנבחרו" : "מציג פריטים אקראיים מהתפריט"}
-                  </span>
-                  {!userSelected && (
-                    <button
-                      onClick={() => setRefreshKey(k => k + 1)}
-                      title="טען פריטים אקראיים חדשים"
-                      style={{ background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "rgba(255,255,255,.7)", cursor: "pointer", padding: "3px 10px", fontSize: 13, fontFamily: "var(--sans)", display: "flex", alignItems: "center" }}
-                    >↺</button>
-                  )}
-                </div>
-              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, color: "rgba(0, 0, 0)", fontFamily: "var(--sans)" }}>
+                  {userSelected ? "מציג פריטים שנבחרו" : "מציג פריטים אקראיים מהתפריט"}
+                </span>
+                {!userSelected && (
+                  <button
+                    onClick={() => setRefreshKey(k => k + 1)}
+                    title="טען פריטים אקראיים חדשים"
+                    onMouseEnter={() => setRefreshHovered(true)}
+                    onMouseLeave={() => setRefreshHovered(false)}
+                    style={{
+                      background: refreshHovered ? "#0B4440" : "rgba(255,255,255,1)",
+                      border: `1px solid ${refreshHovered ? "rgba(0,0,0,.12)" : "rgba(0,0,0)"}`,
+                      borderRadius: 6,
+                      color: refreshHovered ? "white" : "rgba(0,0,0)",
+                      cursor: "pointer",
+                      padding: "3px 10px",
+                      fontSize: 15,
+                      fontFamily: "var(--sans)",
+                      display: "flex",
+                      alignItems: "center",
+                      transition: "all .15s",
+                    }}
+                  >↺</button>
+                )}
+              </div>
+            )}
             </div>
 
             <div className="rw">

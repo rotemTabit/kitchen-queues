@@ -36,7 +36,7 @@ export default function ParamSearch({ query, setQuery, activeFilter, setFilter }
       {/* Search input */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        background: 'var(--bm)', border: '1.5px solid var(--bdr)',
+        background: 'var(--bm)',
         borderRadius: 10, padding: '7px 12px',
         transition: 'border-color .15s',
         ...(focused ? { borderColor: 'var(--ba)' } : {}),
@@ -47,10 +47,11 @@ export default function ParamSearch({ query, setQuery, activeFilter, setFilter }
           onChange={e => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
+          className='input-white'
           placeholder="חפש פרמטר..."
           style={{
             flex: 1, border: 'none', background: 'transparent', outline: 'none',
-            fontSize: 13, color: 'var(--bd)', direction: 'rtl',
+            fontSize: 13, color: 'white', direction: 'rtl',
             fontFamily: 'var(--sans)',
           }}
         />
@@ -77,12 +78,12 @@ export default function ParamSearch({ query, setQuery, activeFilter, setFilter }
                 onMouseDown={e => { e.preventDefault(); setFilter(active ? null : fg.id); }}
                 style={{
                   fontSize: 11, padding: '4px 11px', borderRadius: 20,
-                  border: `1.5px solid ${active ? 'var(--ba)' : 'var(--bdr)'}`,
+                  border: `2px solid ${active ? 'var(--ba)' : 'var(--bdr)'}`,
                   background: active ? 'var(--ba)' : 'transparent',
                   color: active ? '#fff' : 'var(--sub)',
                   cursor: 'pointer', fontFamily: 'var(--sans)',
                   transition: 'all .15s',
-                  fontWeight: active ? 600 : 400,
+                  fontWeight: active ? 600 : 600,
                 }}
               >
                 {fg.lbl}

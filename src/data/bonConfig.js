@@ -67,6 +67,112 @@ export const MENU_VIEWS = ['תפריט בוקר','תפריט ערב','משלוח
 export const CTX_ZONES = {
 
   // ════════════════════════════════════════════════════
+  // GENERAL — הגדרות כלליות של הבון
+  // ════════════════════════════════════════════════════
+  general: {
+    title: 'הגדרות כלליות',
+    cats: {
+      'הגבלות הדפסה': [
+        { id: 'EXCLUDE_TABLES_',
+          lbl: 'הוצא טווח שולחנות',
+          sub: 'הגדר טווח שולחנות שלא יגיעו לתחנה זו. לדוגמה: 101:110 יוציא את שולחנות 101 עד 110. שימושי להפרדה בין אזורי ישיבה שונים.',
+          templates: ['general','allday','perdiner'],
+          type: 'text', noImpl: true },
+
+        { id: 'EXCLUDE_PROFILE_',
+          lbl: 'הוצא פרופיל עבודה',
+          sub: 'בחר פרופיל עבודה שהזמנות ממנו לא יגיעו לתחנה זו. לדוגמה: מלצרי בר לא ישלחו בונות לגריל, או שולחנות חצר לא יגיעו למטבח הפנים.',
+          templates: ['general','allday','perdiner'],
+          type: 'multi', selectSrc: 'workflow_profiles',
+          noImpl: true },
+
+        { id: 'INCLUDE_PROFILE_',
+          lbl: 'הצג רק פרופיל עבודה',
+          sub: 'רק הזמנות מהפרופיל שתבחר יגיעו לתחנה הזו. שימושי כשרוצים שתחנה תקבל רק הזמנות מסוג מסוים, כמו בר שיקבל רק הזמנות שתייה.',
+          templates: ['general','allday','perdiner'],
+          type: 'multi', selectSrc: 'workflow_profiles',
+          noImpl: true },
+
+        { id: 'EXCLUDE_MENU_VIEW_',
+          lbl: 'הוצא תפריט תצוגה',
+          sub: 'בחר תפריט תצוגה שפריטים ממנו לא יגיעו לתחנה זו. לדוגמה: פריטים מתפריט Wolt לא יוצגו בגריל הפנים, או תפריט בוקר לא יגיע לבר.',
+          templates: ['general','allday','perdiner'],
+          type: 'multi', selectSrc: 'menu_views',
+          noImpl: true },
+
+        { id: 'IGNORE_KIOSK_ORDERS',
+          lbl: 'אל תדפיס הזמנות קיוסק',
+          sub: 'הגדרה זו מונעת מהזמנות שהגיעו מקיוסק עצמי להגיע לתחנה. שימושי כשהקיוסק מחובר לפס ייצור נפרד.',
+          templates: ['general','allday','perdiner'],
+          noImpl: true },
+      ],
+
+      'תיאום תחנות': [
+        { id: 'NOTIFY_OTHER_STATION',
+          lbl: 'שלח התראה לתחנות אחרות',
+          sub: 'מפעיל שליחת בון התראה לתחנות עבודה נוספות שמעורבות בהזמנה. שימושי לתיאום בין מטבח לבר או בין גריל למחלקת קינוחים.',
+          templates: ['general'],
+          noImpl: true },
+      ],
+
+      'Course והדפסה': [
+        { id: 'SEPARATE_BON_4_EVERY_COURSE',
+          lbl: 'בון נפרד לכל שלב בארוחה',
+          sub: 'כל קורס יודפס כבון עצמאי עם כותרת, גוף ותחתית משלו. כך כל תחנת הכנה מקבלת בון נקי עבור הראשונות, עוד אחד לעיקריות וכן הלאה.',
+          templates: ['general'] },
+
+        { id: 'IGNORE_FIRE_TICKETS',
+          lbl: 'בטל הדפסת בון שידור',
+          sub: 'מבטל את הדפסת בון ה-FIRE לחלוטין. הפריטים יכנסו למטבח רק דרך הבון הראשוני, ללא בון שידור נפרד.',
+          templates: ['general'],
+          noImpl: true },
+
+        { id: 'COURSE_SEPARATOR',
+          lbl: 'קו הפרדה בין קורסים',
+          sub: 'מוסיף שורת כוכביות (***) בין כל קורס לקורס הבא. עוזר לצוות לזהות בקלות איפה מסתיימות הראשונות ומתחילות העיקריות.',
+          templates: ['general'],
+          noImpl: true },
+
+        { id: 'ONLY_COURSE_ACTION_FIRE',
+          lbl: 'הדפס רק פריטים ששודרו',
+          sub: 'הבון יציג רק פריטים שהמלצר שלח לשידור (FIRE). פריטים שעדיין בהמתנה לא יוצגו. שימושי במטבח עם מערכת Course.',
+          templates: ['general','allday','perdiner'],
+          noImpl: true },
+
+        { id: 'ONLY_COURSE_ACTION_NOTIFY',
+          lbl: 'הדפס פריטים ממתינים בלבד',
+          sub: 'הבון יציג רק פריטים שטרם שודרו ונמצאים בהמתנה. שימושי למעקב אחר מה צריך עוד להתחיל להכין.',
+          templates: ['general','allday','perdiner'],
+          noImpl: true },
+
+        { id: 'ONLY_COURSE_ACTION_FIRE_NOTIFY',
+          lbl: 'פריטים שיצאו לאחר המתנה',
+          sub: 'מדפיס בון עבור פריטים שנשלחו לשידור (FIRE) לאחר שהמתינו בתור. חלק ממערכת Course שמנהלת את סדר ההגשה.',
+          templates: ['general','allday','perdiner'],
+          noImpl: true },
+
+        { id: 'ONLY_COURSE_IMMEDIATE_ACTION_FIRE_NOTIFY',
+          lbl: 'פריטים שעברו מהמתנה לשידור',
+          sub: 'מדפיס בון עבור פריטים שהיו בהמתנה ושודרו מיידית. חלק ממערכת Course שמנהלת את זרימת ההכנה בין תחנות.',
+          templates: ['general','allday','perdiner'],
+          noImpl: true },
+
+        { id: 'ENABLE_ITEMS_FOR_FIRE_OF_NOTIFY_COURSE',
+          lbl: 'הצג ממתינים על בון השידור',
+          sub: 'מוסיף לבון השידור (FIRE) גם את שמות הפריטים שעדיין ממתינים בתור. עוזר לצוות המטבח לראות את התמונה המלאה של השולחן.',
+          templates: ['general','allday','perdiner'],
+          noImpl: true },
+
+        { id: 'CLEAN_COURSE_STYLE',
+          lbl: 'סגנון נקי לבון המתנה',
+          sub: 'מסיר את המילה FIRE מבון ההמתנה ומציג אותו בסגנון נקי יותר. שימושי במסעדות שמעדיפות מינימליזם על הבון.',
+          templates: ['general'],
+          noImpl: true },
+      ],
+    },
+  },
+
+  // ════════════════════════════════════════════════════
   // HEADER
   // ════════════════════════════════════════════════════
   header: {
@@ -190,41 +296,6 @@ export const CTX_ZONES = {
           templates: ['general','allday','peritem','perdiner'],
           type: 'numeric' },
       ],
-
-      'הגבלות הדפסה': [
-        { id: 'EXCLUDE_TABLES_',
-          lbl: 'הוצא טווח שולחנות',
-          sub: 'הגדר טווח שולחנות שלא יגיעו לתחנה זו. לדוגמה: 101:110 יוציא את שולחנות 101 עד 110. שימושי להפרדה בין אזורי ישיבה שונים.',
-          templates: ['general','allday','perdiner'],
-          type: 'text', noImpl: true },
-
-        { id: 'EXCLUDE_PROFILE_',
-          lbl: 'הוצא פרופיל עבודה',
-          sub: 'בחר פרופיל עבודה שהזמנות ממנו לא יגיעו לתחנה זו. לדוגמה: מלצרי בר לא ישלחו בונות לגריל, או שולחנות חצר לא יגיעו למטבח הפנים.',
-          templates: ['general','allday','perdiner'],
-          type: 'multi', selectSrc: 'workflow_profiles',
-          noImpl: true },
-
-        { id: 'INCLUDE_PROFILE_',
-          lbl: 'הצג רק פרופיל עבודה',
-          sub: 'רק הזמנות מהפרופיל שתבחר יגיעו לתחנה הזו. שימושי כשרוצים שתחנה תקבל רק הזמנות מסוג מסוים, כמו בר שיקבל רק הזמנות שתייה.',
-          templates: ['general','allday','perdiner'],
-          type: 'multi', selectSrc: 'workflow_profiles',
-          noImpl: true },
-
-        { id: 'EXCLUDE_MENU_VIEW_',
-          lbl: 'הוצא תפריט תצוגה',
-          sub: 'בחר תפריט תצוגה שפריטים ממנו לא יגיעו לתחנה זו. לדוגמה: פריטים מתפריט Wolt לא יוצגו בגריל הפנים, או תפריט בוקר לא יגיע לבר.',
-          templates: ['general','allday','perdiner'],
-          type: 'multi', selectSrc: 'menu_views',
-          noImpl: true },
-
-        { id: 'IGNORE_KIOSK_ORDERS',
-          lbl: 'אל תדפיס הזמנות קיוסק',
-          sub: 'הגדרה זו מונעת מהזמנות שהגיעו מקיוסק עצמי להגיע לתחנה. שימושי כשהקיוסק מחובר לפס ייצור נפרד.',
-          templates: ['general','allday','perdiner'],
-          noImpl: true },
-      ],
     },
   },
 
@@ -332,6 +403,12 @@ export const CTX_ZONES = {
           sub: 'רק המשנים מהקבוצות שתבחר יוצגו — שאר הקבוצות מוסתרות',
           templates: ['general'],
           type: 'multi', selectSrc: 'modifier_groups' },
+
+        { id: 'OMIT_BON_TAGS',
+          lbl: 'הסתר תגיות על פריטים ספציפיים',
+          sub: 'מסיר תגיות שמוצמדות לפריטים בודדים (כמו "מנה עלינו" או "ללא חיוב"). שימושי כשהמידע הזה אינו רלוונטי לתחנת ההכנה.',
+          templates: ['general'],
+          noImpl: true },
       ],
 
       'סינון קורסים': [
@@ -433,61 +510,6 @@ export const CTX_ZONES = {
           lbl: 'הסרות בסגנון אנגלי',
           sub: 'במקום "בלי X" יוצג "No X" — בשילוב עם בון באנגלית',
           templates: ['general'] },
-      ],
-
-      'Course': [
-        { id: 'SEPARATE_BON_4_EVERY_COURSE',
-          lbl: 'בון נפרד לכל שלב בארוחה',
-          sub: 'כל קורס יודפס כבון עצמאי עם כותרת, גוף ותחתית משלו. כך כל תחנת הכנה מקבלת בון נקי עבור הראשונות, עוד אחד לעיקריות וכן הלאה.',
-          templates: ['general'] },
-
-        { id: 'ONLY_COURSE_ACTION_FIRE',
-          lbl: 'הדפס רק פריטים ששודרו',
-          sub: 'הבון יציג רק פריטים שהמלצר שלח לשידור (FIRE). פריטים שעדיין בהמתנה לא יוצגו. שימושי במטבח עם מערכת Course.',
-          templates: ['general','allday','perdiner'],
-          noImpl: true },
-
-        { id: 'ONLY_COURSE_ACTION_NOTIFY',
-          lbl: 'הדפס פריטים ממתינים בלבד',
-          sub: 'הבון יציג רק פריטים שטרם שודרו ונמצאים בהמתנה. שימושי למעקב אחר מה צריך עוד להתחיל להכין.',
-          templates: ['general','allday','perdiner'],
-          noImpl: true },
-
-        { id: 'ONLY_COURSE_ACTION_FIRE_NOTIFY',
-          lbl: 'פריטים שיצאו לאחר המתנה',
-          sub: 'מדפיס בון עבור פריטים שנשלחו לשידור (FIRE) לאחר שהמתינו בתור. חלק ממערכת Course שמנהלת את סדר ההגשה.',
-          templates: ['general','allday','perdiner'],
-          noImpl: true },
-
-        { id: 'ONLY_COURSE_IMMEDIATE_ACTION_FIRE_NOTIFY',
-          lbl: 'פריטים שעברו מהמתנה לשידור',
-          sub: 'מדפיס בון עבור פריטים שהיו בהמתנה ושודרו מיידית. חלק ממערכת Course שמנהלת את זרימת ההכנה בין תחנות.',
-          templates: ['general','allday','perdiner'],
-          noImpl: true },
-
-        { id: 'ENABLE_ITEMS_FOR_FIRE_OF_NOTIFY_COURSE',
-          lbl: 'הצג ממתינים על בון השידור',
-          sub: 'מוסיף לבון השידור (FIRE) גם את שמות הפריטים שעדיין ממתינים בתור. עוזר לצוות המטבח לראות את התמונה המלאה של השולחן.',
-          templates: ['general','allday','perdiner'],
-          noImpl: true },
-
-        { id: 'CLEAN_COURSE_STYLE',
-          lbl: 'סגנון נקי לבון המתנה',
-          sub: 'מסיר את המילה FIRE מבון ההמתנה ומציג אותו בסגנון נקי יותר. שימושי במסעדות שמעדיפות מינימליזם על הבון.',
-          templates: ['general'],
-          noImpl: true },
-
-        { id: 'IGNORE_FIRE_TICKETS',
-          lbl: 'בטל הדפסת בון שידור',
-          sub: 'מבטל את הדפסת בון ה-FIRE לחלוטין. הפריטים יכנסו למטבח רק דרך הבון הראשוני, ללא בון שידור נפרד.',
-          templates: ['general'],
-          noImpl: true },
-
-        { id: 'COURSE_SEPARATOR',
-          lbl: 'קו הפרדה בין קורסים',
-          sub: 'מוסיף שורת כוכביות (***) בין כל קורס לקורס הבא. עוזר לצוות לזהות בקלות איפה מסתיימות הראשונות ומתחילות העיקריות.',
-          templates: ['general'],
-          noImpl: true },
       ],
     },
   },
@@ -667,18 +689,6 @@ export const CTX_ZONES = {
       ],
 
       'לא ממומש': [
-        { id: 'NOTIFY_OTHER_STATION',
-          lbl: 'שלח התראה לתחנות אחרות',
-          sub: 'מפעיל שליחת בון התראה לתחנות עבודה נוספות שמעורבות בהזמנה. שימושי לתיאום בין מטבח לבר או בין גריל למחלקת קינוחים.',
-          templates: ['general'],
-          noImpl: true },
-
-        { id: 'OMIT_BON_TAGS',
-          lbl: 'הסתר תגיות על פריטים ספציפיים',
-          sub: 'מסיר תגיות שמוצמדות לפריטים בודדים (כמו "מנה עלינו" או "ללא חיוב"). שימושי כשהמידע הזה אינו רלוונטי לתחנת ההכנה.',
-          templates: ['general'],
-          noImpl: true },
-
         { id: 'PRINT_OTHER_BONS',
           lbl: 'הדפס בכל תחנות ההכנה',
           sub: 'שולח את הבון לכל תחנות ההכנה הפעילות במקביל. שימושי לתחנות שצריכות תיאום מלא, כמו בחתונות או אירועים גדולים.',

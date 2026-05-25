@@ -28,54 +28,49 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
     const elems = Array.from(p.querySelectorAll('.be'));
     if (!elems.length) return;
 
-    // bucket elements into zones using data-zone attribute (set by buildElements)
     const buckets = { header: [], items: [], footer: [] };
     elems.forEach(el => {
       const zone = el.dataset.zone || 'items';
       if (buckets[zone]) buckets[zone].push(el);
     });
 
-    const pRect = p.getBoundingClientRect();  // bon paper
-    const cRect = c.getBoundingClientRect();  // scroll container
+    const pRect = p.getBoundingClientRect();
+    const cRect = c.getBoundingClientRect();
 
     const bonFitsInContainer = pRect.height <= cRect.height;
-
-    // כפתורי ראש/פריטים/תחתית — משמאל לבון
-    const leftBtnX = pRect.left - 40;
-    // כפתור general — מימין לבון
+    const leftBtnX  = pRect.left - 40;
     const rightBtnX = pRect.right + 14;
 
     const newPos = {};
 
-    // ── כפתור general: תמיד באמצע הבון אנכית ──
-    const bonMidY = (pRect.top + pRect.bottom) / 2;
-    const clampedMidY = Math.max(cRect.top + 20, Math.min(cRect.bottom - 20, bonMidY));
-    newPos.general = { x: rightBtnX, y: clampedMidY, mode: 'fixed', side: 'right' };
+    // ── general: תמיד במרכז הקונטיינר — סטטי, לא זז עם הבון ──
+    newPos.general = {
+      x: rightBtnX,
+      y: (cRect.top + cRect.bottom) / 2,
+      side: 'right',
+    };
 
     if (bonFitsInContainer) {
-      // ── BON FITS: buttons follow actual zone positions, clamped to bon ──
       Object.entries(buckets).forEach(([zone, els]) => {
         if (!els.length) return;
         const firstRect = els[0].getBoundingClientRect();
         const lastRect  = els[els.length - 1].getBoundingClientRect();
         let y;
-        if (zone === 'header') y = firstRect.top + firstRect.height / 2;
-        else if (zone === 'footer') y = lastRect.top + lastRect.height / 2;
-        else y = (firstRect.top + lastRect.bottom) / 2;
+        if (zone === 'header')      y = firstRect.top + firstRect.height / 2;
+        else if (zone === 'footer') y = lastRect.top  + lastRect.height  / 2;
+        else                        y = (firstRect.top + lastRect.bottom) / 2;
 
-        // clamp to bon paper bounds
         y = Math.max(pRect.top + 14, Math.min(pRect.bottom - 14, y));
-        newPos[zone] = { x: leftBtnX, y, mode: 'fixed', side: 'left' };
+        newPos[zone] = { x: leftBtnX, y, side: 'left' };
       });
     } else {
-      // ── BON OVERFLOWS: buttons pin to container top / center / bottom ──
       const top    = cRect.top    + 24;
       const bottom = cRect.bottom - 24;
       const mid    = (cRect.top + cRect.bottom) / 2;
 
-      if (buckets.header.length)  newPos.header  = { x: leftBtnX, y: top,    mode: 'fixed', side: 'left' };
-      if (buckets.items.length)   newPos.items   = { x: leftBtnX, y: mid,    mode: 'fixed', side: 'left' };
-      if (buckets.footer.length)  newPos.footer  = { x: leftBtnX, y: bottom, mode: 'fixed', side: 'left' };
+      if (buckets.header.length) newPos.header = { x: leftBtnX, y: top,    side: 'left' };
+      if (buckets.items.length)  newPos.items  = { x: leftBtnX, y: mid,    side: 'left' };
+      if (buckets.footer.length) newPos.footer = { x: leftBtnX, y: bottom, side: 'left' };
     }
 
     setPositions(newPos);
@@ -110,10 +105,9 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
           <div style={{
             position: 'fixed',
             top: pos.y,
-            // general — טולטיפ משמאל לכפתור; שאר — מימין לכפתור
             ...(isGeneral
-              ? { left: pos.x + (isGeneral ? 44 : 0), transform: 'translateY(-50%)' }
-              : { left: pos.x - 8, transform: 'translateY(-50%) translateX(-100%)' }
+              ? { left: pos.x + 44, transform: 'translateY(-50%)' }
+              : { left: pos.x - 8,  transform: 'translateY(-50%) translateX(-100%)' }
             ),
             background: 'rgba(11,68,64,.92)', color: 'var(--ba)',
             fontFamily: 'var(--sans)', fontSize: '11px', fontWeight: 700,
@@ -134,20 +128,19 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
             top: pos.y,
             left: pos.x,
             transform: 'translateY(-50%)',
-            // general — גדול יותר, עגול פחות
-            width:  isGeneral ? 36 : 30,
-            height: isGeneral ? 36 : 30,
+            width:        isGeneral ? 36 : 30,
+            height:       isGeneral ? 36 : 30,
             borderRadius: isGeneral ? '10px' : '50%',
-
-            background: isActive ? 'var(--ba)' : 'var(--bm)',
-            color:      isActive ? 'var(--bd)' : 'var(--ba)',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all .18s',
-            boxShadow: isGeneral
-              ? '0 2px 12px rgba(0,0,0,.35)'
-              : '0 2px 8px rgba(0,0,0,.3)',
-            pointerEvents: 'auto', zIndex: 500,
+            border:       'none',
+            background:   isActive ? 'var(--ba)' : 'var(--bm)',
+            color:        isActive ? 'var(--bd)' : 'var(--ba)',
+            cursor:       'pointer',
+            display:      'flex', alignItems: 'center', justifyContent: 'center',
+            transition:   'all .18s',
+            boxShadow:    '0 2px 8px rgba(0,0,0,.25)',
+            overflow:     'hidden',   // מונע את הצל הכהה בפינות
+            pointerEvents: 'auto',
+            zIndex: 500,
           }}
         >
           {isGeneral ? <SettingsIcon /> : <PencilIcon />}

@@ -7,6 +7,7 @@ import { useTemplates, usePrinters, useParamGroups, useCategoryTree } from "../h
 import ParamBot from "./Parambot";
 import TreeSelect from "./TreeSelect";
 import ItemsModal from "./ItemsModal";
+import CtxPanel from "./CtxPanel";
 
 // TMPLS → from Supabase via useTemplates()
 
@@ -28,27 +29,11 @@ const SRC_OPTIONS = [
   { value: "kiosk", label: "קיוסק" },
 ];
 
-// PRINTERS → from Supabase via usePrinters()
-
-const DEMO_ITEMS_GENERAL = [
-  [
-    { qty: 1, name: "סמאש בורגר" },
-    { qty: 1, name: "צ׳יפס" },
-    { qty: 1, name: "קוקה קולה" },
-  ],
-  [
-    { qty: 1, name: "סמאש בורגר" },
-    { qty: 1, name: "צ׳יפס" },
-    { qty: 1, name: "קוקה קולה" },
-  ],
-];
-const DEMO_ITEMS_ALLDAY = [
-  [
-    { qty: 2, name: "סמאש בורגר" },
-    { qty: 2, name: "צ׳יפס" },
-    { qty: 2, name: "קוקה קולה" },
-  ],
-];
+// IDs שלא נחשבים "פרמטרים" לצורך הלשונית
+const NON_PARAM_KEYS = new Set([
+  "INC_ITEMS","EXC_ITEMS","INC_CATS","EXC_CATS",
+  "PRINT_ALL_ITEMS","KDS_ONLY","AGGREGATE",
+]);
 
 // ── Mini receipt preview ──────────────────────────────────
 function TemplateReceipt({ template, bonName }) {
@@ -83,7 +68,6 @@ function TemplateReceipt({ template, bonName }) {
 
   const renderItems = () => {
     if (!template) return <div style={S.empty}>בחר תבנית לתצוגה</div>;
-
     if (template === "allday") {
       return (
         <>
@@ -93,7 +77,6 @@ function TemplateReceipt({ template, bonName }) {
         </>
       );
     }
-
     if (template === "peritem") {
       return (
         <>
@@ -108,7 +91,6 @@ function TemplateReceipt({ template, bonName }) {
         </>
       );
     }
-
     if (template === "perdiner") {
       return (
         <>
@@ -125,8 +107,7 @@ function TemplateReceipt({ template, bonName }) {
         </>
       );
     }
-
-    // general (default)
+    // general
     return (
       <>
         {[0, 1].map(gi => (
@@ -170,6 +151,128 @@ function TemplateReceipt({ template, bonName }) {
   );
 }
 
+// ── Active Params Tab ─────────────────────────────────────────────────────
+// מציג רק פרמטרים פעילים + כפתור "הוספת פרמטרים"
+function ActiveParamsTab({ params, onParamChange, paramGroups, onAddParam }) {
+  // פרמטרים פעילים: ערך true / מספר > 0 / מערך לא ריק
+  const isActive = (val) => {
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === 'number') return val > 0;
+    return !!val;
+  };
+
+  // בנה מפה מ-id לתיאור (lbl) מתוך paramGroups
+  const labelMap = {};
+  (paramGroups || []).forEach(g => {
+    g.params.forEach(p => { labelMap[p.id] = { lbl: p.lbl, sub: p.sub }; });
+  });
+
+  // פרמטרים פעילים (לא כולל מפתחות מיוחדים)
+  const activeEntries = Object.entries(params).filter(
+    ([k, v]) => !NON_PARAM_KEYS.has(k) && isActive(v)
+  );
+
+  // פרמטרים "ממתינים למחיקה" — כבוי ע"י המשתמש אבל עדיין לא נשמר
+  const [pendingOff, setPendingOff] = useState(new Set());
+
+  const handleToggleOff = (id) => {
+    setPendingOff(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // ביטול — החזר את הפרמטר
+        next.delete(id);
+      } else {
+        next.add(id);
+        onParamChange(id, false);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+
+      {/* רשימת פרמטרים פעילים */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {activeEntries.length === 0 && pendingOff.size === 0 ? (
+          <div style={{
+            padding: '32px 16px', textAlign: 'center', color: 'var(--sub)',
+            fontSize: 12, direction: 'rtl',
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>🎛️</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>אין פרמטרים פעילים</div>
+            <div style={{ opacity: .7 }}>לחץ על "הוספת פרמטרים" כדי להתחיל</div>
+          </div>
+        ) : (
+          <div>
+            {activeEntries.map(([id, val]) => {
+              const meta = labelMap[id] || { lbl: id, sub: null };
+              const isPendingOff = pendingOff.has(id);
+              return (
+                <div
+                  key={id}
+                  className="pr"
+                  style={{
+                    opacity: isPendingOff ? 0.45 : 1,
+                    transition: 'opacity .2s',
+                    background: isPendingOff ? '#fff5f5' : undefined,
+                  }}
+                >
+                  <div className="pr-l" style={{ flex: 1 }}>
+                    <div className="pr-lbl" style={{ textDecoration: isPendingOff ? 'line-through' : 'none' }}>
+                      {meta.lbl}
+                    </div>
+                    {isPendingOff && (
+                      <div style={{ fontSize: 10, color: '#e55', marginTop: 2 }}>
+                        יוסר בשמירה הבאה
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleToggleOff(id)}
+                    title={isPendingOff ? "בטל הסרה" : "כבה פרמטר"}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: isPendingOff ? 'var(--bm)' : '#e55',
+                      fontSize: 16, lineHeight: 1, padding: '2px 4px', flexShrink: 0,
+                    }}
+                  >
+                    {isPendingOff ? '↩' : '×'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* כפתור הוספת פרמטרים */}
+      <div style={{
+        padding: '12px 14px',
+        borderTop: '1px solid var(--bdr)',
+        flexShrink: 0,
+      }}>
+        <button
+          onClick={onAddParam}
+          style={{
+            width: '100%', padding: '10px 14px', borderRadius: 9,
+            border: '1.5px solid var(--bm)', background: 'var(--bm)',
+            color: 'white', fontSize: 13, fontFamily: 'var(--sans)',
+            cursor: 'pointer', fontWeight: 700, direction: 'rtl',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            transition: 'all .15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bd)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--bm)'; }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>＋</span>
+          הוספת פרמטרים
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────
 export default function SettingsPanel({
   bonName, setBonName,
@@ -178,54 +281,46 @@ export default function SettingsPanel({
   orderTypes, setOrderTypes,
   sources, setSources,
   menu,
+  selectedPrinters, setSelectedPrinters,
+  copies, setCopies,
 }) {
   const [activeTab, setActiveTab]         = useState("bon");
-  const [selectedPrinters, setSelectedPrinters] = useState([]);
-  const [showBot, setShowBot]                 = useState(false);
-  const [botKey, setBotKey]                   = useState(0);
-  const [copies, setCopies]               = useState(1);
+  const [showBot, setShowBot]             = useState(false);
+  const [botKey, setBotKey]               = useState(0);
   const [itemsModalOpen, setItemsModalOpen] = useState(false);
+  // ── Picker state ──
+  const [showParamPicker, setShowParamPicker] = useState(false);
 
   // ── Supabase data ──
-  const { templates }               = useTemplates();
-  const { printers }                = usePrinters();
-  const { paramGroups }             = useParamGroups();
-  const { tree, flatItems }           = useCategoryTree();
-
-  const allItems = menu.flatMap(cat => (cat.items || []).map(it => ({
-    value: it.id, label: it.name,
-  })));
-  const allCats = menu.map(cat => ({
-    value: cat.id, label: `${cat.display || cat.name} (${(cat.items || []).length})`,
-  }));
+  const { templates }     = useTemplates();
+  const { printers }      = usePrinters();
+  const { paramGroups }   = useParamGroups();
+  const { tree, flatItems } = useCategoryTree();
 
   const activePrinters = printers.filter(p => selectedPrinters.includes(p.id));
   const printerColor   = activePrinters.length > 0 ? "#4caf50" : "#f59e0b";
 
-  // ── Tab status indicators ──
-  const bonOk      = !!template && !!bonName?.trim();
-  const bonColor   = bonOk ? "#4caf50" : "#f59e0b";
-  const itemsOk    = !!params["PRINT_ALL_ITEMS"]
+  const bonOk    = !!template && !!bonName?.trim();
+  const bonColor = bonOk ? "#4caf50" : "#f59e0b";
+  const itemsOk  = !!params["PRINT_ALL_ITEMS"]
     || (params["INC_ITEMS"] || []).length > 0
     || (params["INC_CATS"]  || []).length > 0;
-  const itemsColor = itemsOk ? "#4caf50" : "#f59e0b";
-  const hasParams  = Object.entries(params).some(([k, v]) =>
-    !["INC_ITEMS","EXC_ITEMS","INC_CATS","EXC_CATS","PRINT_ALL_ITEMS","KDS_ONLY","AGGREGATE"].includes(k) && !!v
+  const itemsColor  = itemsOk ? "#4caf50" : "#f59e0b";
+  const hasParams   = Object.entries(params).some(([k, v]) =>
+    !NON_PARAM_KEYS.has(k) && !!v
   );
   const paramsColor = hasParams ? "#4caf50" : "#64748b";
 
   const iconStyle = { display: "inline", verticalAlign: "middle", marginLeft: 4 };
   const TABS = [
-    { id: "bon",    label: "הגדרות בון", icon: <Settings size={12} color={bonColor} style={iconStyle} /> },
-    { id: "print",  label: "הדפסה",   icon: <Printer size={12} color={printerColor} style={iconStyle} /> },
-    { id: "items",  label: "פריטים",  icon: itemsOk ? <Check size={12} color={itemsColor} style={iconStyle} /> : <X size={12} color={itemsColor} style={iconStyle} /> },
-    { id: "params", label: "פרמטרים", icon: <PenLine size={12} color={paramsColor} style={iconStyle} /> },
+    { id: "bon",    label: "הגדרות בון", icon: <Settings size={12} color={bonColor}    style={iconStyle} /> },
+    { id: "print",  label: "הדפסה",      icon: <Printer  size={12} color={printerColor} style={iconStyle} /> },
+    { id: "items",  label: "פריטים",     icon: itemsOk ? <Check size={12} color={itemsColor} style={iconStyle} /> : <X size={12} color={itemsColor} style={iconStyle} /> },
+    { id: "params", label: "פרמטרים",    icon: <PenLine  size={12} color={paramsColor}  style={iconStyle} /> },
   ];
 
   return (
     <>
-      {/* ── Toast ── */}
-
       {/* ── Topbar ── */}
       <div className="topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -234,56 +329,33 @@ export default function SettingsPanel({
             הגדרת בון: {bonName?.trim() || "בון חדש"}
           </span>
         </div>
-        {/* AI pill — doubles as bot header when open */}
-        <div
-          onClick={() => setShowBot(b => !b)}
-          style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-        >
-          {showBot ? (
-            /* When bot is open: show X + נקה as the pill content */
+        {/* AI pill */}
+        {!showBot ? (
+          <div onClick={() => setShowBot(true)} style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
             <div style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "#0d4a3e", borderRadius: "22px 0 0 22px",
-              padding: "0 10px 0 14px", height: 36,
-              border: "1.5px solid #1D9E75", borderRight: "none",
-              marginRight: -1,
-            }}>
-              <button onClick={e => { e.stopPropagation(); setShowBot(false); }}
-                style={{ background: "none", border: "none", cursor: "pointer",
-                         color: "#5DCAA5", fontSize: 16, lineHeight: 1, padding: 0 }}>✕</button>
-              <button onClick={e => { e.stopPropagation(); setBotKey(k => k+1); }}
-                style={{ background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer",
-                         color: "#5DCAA5", fontSize: 11, borderRadius: 5,
-                         padding: "2px 8px", fontFamily: "var(--sans)" }}>↺ נקה</button>
-            </div>
-          ) : (
-            <div style={{
-              background: "#0d4a3e", color: "#5DCAA5",
-              fontFamily: "var(--sans)", fontSize: 13, fontWeight: 600,
+              background: "#0d4a3e", color: "#5DCAA5", fontFamily: "var(--sans)", fontSize: 13, fontWeight: 600,
               padding: "0 14px 0 18px", height: 27, borderRadius: "22px 0 0 22px",
               display: "flex", alignItems: "center", whiteSpace: "nowrap",
               border: "1.5px solid #0d4a3e", borderRight: "none", marginRight: -1,
-              transition: "background .2s",
             }} dir='rtl'>עוזר AI</div>
-          )}
-          <div style={{
-            width: 38, height: 38, borderRadius: "50%",
-            background: showBot ? "rgba(0,0,0,0.65)" : "#1D9E75",
-            border: "2px solid #5DCAA5",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, transition: "background .2s",
-            boxShadow: "0 0 0 3px #0d4a3e",
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-              style={{ display: "block", transformOrigin: "12px 12px",
-                       animation: "tabot-spin .75s ease-in-out alternate infinite" }}>
-              <path d="M12 2 L13.4 10.6 L22 12 L13.4 13.4 L12 22 L10.6 13.4 L2 12 L10.6 10.6 Z" fill="white"/>
-              <path d="M20 3 L20.6 5.4 L23 6 L20.6 6.6 L20 9 L19.4 6.6 L17 6 L19.4 5.4 Z" fill="white" opacity="0.75"/>
-              <path d="M4 17 L4.5 19.5 L7 20 L4.5 20.5 L4 23 L3.5 20.5 L1 20 L3.5 19.5 Z" fill="white" opacity="0.55"/>
-            </svg>
+            <div style={{
+              width: 38, height: 38, borderRadius: "50%", background: "#1D9E75",
+              border: "2px solid #5DCAA5", display: "flex", alignItems: "center",
+              justifyContent: "center", flexShrink: 0, boxShadow: "0 0 0 3px #0d4a3e",
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                style={{ display: "block", transformOrigin: "12px 12px", animation: "tabot-spin .75s ease-in-out alternate infinite" }}>
+                <path d="M12 2 L13.4 10.6 L22 12 L13.4 13.4 L12 22 L10.6 13.4 L2 12 L10.6 10.6 Z" fill="white"/>
+                <path d="M20 3 L20.6 5.4 L23 6 L20.6 6.6 L20 9 L19.4 6.6 L17 6 L19.4 5.4 Z" fill="white" opacity="0.75"/>
+                <path d="M4 17 L4.5 19.5 L7 20 L4.5 20.5 L4 23 L3.5 20.5 L1 20 L3.5 19.5 Z" fill="white" opacity="0.55"/>
+              </svg>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
+
+      {/* ── Content area: tabs + scroll + overlays — topbar בחוץ ── */}
+      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
       {/* ── Tabs ── */}
       <div className="tabs" dir='rtl'>
@@ -294,7 +366,7 @@ export default function SettingsPanel({
         ))}
       </div>
 
-      <div className="right-scroll">
+      <div className="right-scroll" style={activeTab === 'params' ? { padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } : {}}>
 
         {/* ── BON SETTINGS ── */}
         {activeTab === "bon" && (
@@ -323,17 +395,14 @@ export default function SettingsPanel({
                 {(() => {
                   const sel = templates.find(t => t.key === template);
                   return (
-                    <div style={{
-                      border: "1.5px solid var(--bdr)", borderRadius: 8,
-                      background: "#f8fafb", padding: "10px 12px", minHeight: 64, direction: "rtl",
-                    }}>
+                    <div style={{ border: "1.5px solid var(--bdr)", borderRadius: 8, background: "#f8fafb", padding: "10px 12px", minHeight: 64, direction: "rtl" }}>
                       {sel ? (
                         <>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--bm)", marginBottom: 5 }}>{sel.name}</div>
                           <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.6 }}>{sel.description || sel.desc}</div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", paddingTop: 14, fontWeight:700}}>
+                        <div style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", paddingTop: 14, fontWeight: 700 }}>
                           נא לבחור תבנית הדפסה
                         </div>
                       )}
@@ -373,11 +442,7 @@ export default function SettingsPanel({
                   <div className="pr-sub">הבון ישלח למדפסות שנבחרו</div>
                 </div>
               </div>
-              <PrinterPicker
-                printers={printers}
-                selectedPrinters={selectedPrinters}
-                setSelectedPrinters={setSelectedPrinters}
-              />
+              <PrinterPicker printers={printers} selectedPrinters={selectedPrinters} setSelectedPrinters={setSelectedPrinters} />
             </div>
 
             <div className="pr">
@@ -402,6 +467,25 @@ export default function SettingsPanel({
                 <div className="pr-sub">פריטים זהים מקובצים יחד</div>
               </div>
               <Merge size={18} color="var(--bm)" style={{ flexShrink: 0, marginLeft: 12 }} />
+            </div>
+
+            <div className="pr">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button
+                  onClick={() => setCopies(c => Math.max(1, c - 1))}
+                  style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid var(--bdr)', background: '#f8fafb', color: 'var(--sub)', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                >−</button>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--bd)', minWidth: 20, textAlign: 'center', fontFamily: 'var(--mono)' }}>{copies}</span>
+                <button
+                  onClick={() => setCopies(c => Math.min(10, c + 1))}
+                  style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid var(--bdr)', background: '#f8fafb', color: 'var(--sub)', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                >+</button>
+              </div>
+              <div className="pr-l">
+                <div className="pr-lbl">מספר עותקים</div>
+                <div className="pr-sub">כמה עותקים להדפיס מכל בון</div>
+              </div>
+              <Copy size={18} color="var(--bm)" style={{ flexShrink: 0, marginLeft: 12 }} />
             </div>
 
             <div className="section-label">הגבלות</div>
@@ -438,8 +522,6 @@ export default function SettingsPanel({
             </div>
 
             <div className="section-label">סינון פריטים</div>
-
-            {/* Summary */}
             {(() => {
               const incI = (params["INC_ITEMS"] || []).length;
               const incC = (params["INC_CATS"]  || []).length;
@@ -468,8 +550,6 @@ export default function SettingsPanel({
                 </div>
               );
             })()}
-
-            {/* Open modal button */}
             <button
               onClick={() => setItemsModalOpen(true)}
               style={{
@@ -488,9 +568,15 @@ export default function SettingsPanel({
 
         {/* ── PARAMS ── */}
         {activeTab === "params" && (
-          <ParamsPanel params={params} onParamChange={onParamChange} paramGroups={paramGroups} />
+          <ActiveParamsTab
+            params={params}
+            onParamChange={onParamChange}
+            paramGroups={paramGroups}
+            onAddParam={() => setShowParamPicker(true)}
+          />
         )}
       </div>
+
       {/* Items Modal */}
       {itemsModalOpen && (
         <ItemsModal
@@ -509,8 +595,22 @@ export default function SettingsPanel({
           onClose={() => setItemsModalOpen(false)}
         />
       )}
+
       <style>{`@keyframes tabot-spin{0%{transform:rotate(-18deg) scale(.95)}100%{transform:rotate(18deg) scale(1.1)}}`}</style>
-      {/* ── ParamBot overlay ── */}
+
+      {/* ── CtxPanel Picker (נפתח מכפתור "הוספת פרמטרים") ── */}
+      <CtxPanel
+        zone={null}
+        showPicker={showParamPicker}
+        onClose={() => setShowParamPicker(false)}
+        params={params}
+        onParamChange={onParamChange}
+        template={template}
+        paramGroups={paramGroups}
+      />
+      </div>{/* /content area */}
+
+      {/* ── ParamBot overlay — מכסה הכל כולל הטופבר ── */}
       {showBot && (
         <ParamBot
           key={botKey}
@@ -532,8 +632,6 @@ export default function SettingsPanel({
           setBonName={setBonName}
         />
       )}
-
-      {/* FAB moved to topbar */}
     </>
   );
 }

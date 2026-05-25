@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useMenuWithGroups } from "../hooks/useSupabase";
+import { PenLine } from "lucide-react";
 
 // ── helpers ───────────────────────────────────────────────
 const isWO = id => String(id).startsWith("WO_");
@@ -195,7 +196,7 @@ export default function ItemPicker({ previewItems, onUpdate, onClose }) {
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "var(--bd)", color: "#fff", gap: 10, flexShrink: 0 }}>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,.6)", fontSize: 20, cursor: "pointer" }}>✕</button>
           <span style={{ flex: 1, fontWeight: 700, fontSize: 15, textAlign: "right" }}>בחר פריטים לתצוגה מקדימה</span>
-          <span style={{ fontSize: 12, opacity: 0.7 }}>{preview.size} פריטים</span>
+          <span style={{ fontSize: 12, opacity: 0.7 }} dir='rtl'>{preview.size} פריטים</span>
         </div>
 
         {/* body */}
@@ -257,12 +258,22 @@ export default function ItemPicker({ previewItems, onUpdate, onClose }) {
           </div>
 
           {/* COL 2 — group config */}
-          <div style={{ flex: 1, overflowY: "auto", borderLeft: "1px solid #e5e7eb" }}>
+          <div style={{ flex: 1, overflowY: "auto", borderLeft: "1px solid #e5e7eb" }} dir='rtl'>
             {!selItem ? (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 12, flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 28 }}>⚙</span>
-                <div>בחר פריט לעריכת השינויים</div>
-              </div>
+<div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, padding: "0 32px", textAlign: "center" }}>
+  <span style={{ fontSize: 36 }}>🧾</span>
+  <div style={{ fontSize: 14, fontWeight: 700, color: "#1a2332" }}>
+    בנה תצוגה מקדימה מותאמת אישית
+  </div>
+  <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.7 }}>
+    בחר פריטים מהתפריט, הוסף משנים ושינויים — וראה בדיוק איך הבון ייראה בהדפסה.
+    <br />
+    ניתן לבחור כמה פריטים שרוצים ולשנות כל אחד בנפרד.
+  </div>
+  <div style={{ fontSize: 11, color: "#9ca3af", background: "#f3f4f6", borderRadius: 8, padding: "8px 14px", lineHeight: 1.6 }}>
+    💡 לחץ על פריט ברשימה משמאל כדי להוסיף אותו לתצוגה
+  </div>
+</div>
             ) : (
               <ItemConfig item={selItem} choices={selEntry?.choices || {}}
                 onChange={choices => updateChoices(selectedId, choices)} />
@@ -270,47 +281,117 @@ export default function ItemPicker({ previewItems, onUpdate, onClose }) {
           </div>
 
           {/* COL 3 — selected summary */}
-          <div style={{ width: 190, display: "flex", flexDirection: "column", flexShrink: 0, background: "#f9fafb" }}>
-            <div style={{ padding: "8px 10px", borderBottom: "1px solid #e5e7eb", fontSize: 10, fontWeight: 700, color: "#6b7280", direction: "rtl", flexShrink: 0 }}>בתצוגה</div>
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              {preview.size === 0 && <div style={{ padding: 12, fontSize: 11, color: "#9ca3af", textAlign: "center" }}>לא נבחרו פריטים</div>}
-              {[...preview.values()].map(({ item, choices }) => {
-                const isSel = selectedId === item.id;
-                return (
-                  <div key={item.id} onClick={() => setSelectedId(isSel ? null : item.id)}
-                    style={{ padding: "7px 10px", direction: "rtl", cursor: "pointer", borderBottom: "1px solid #e5e7eb", background: isSel ? "#f0fdf4" : "#fff", borderRight: `3px solid ${isSel ? "var(--bm)" : "transparent"}` }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, direction: "rtl" }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#1a2332" }}>{item.name}</span>
-                      {(() => {
-                        const groups = item.groups || [];
-                        const hasGroups = groups.length > 0;
-                        const hasRequired = groups.some(g => g.min > 0 && g.type !== 'mgss');
-                        const defaults = initChoices(groups);
-                        const hasChanges = hasGroups && Object.keys(defaults).some(gid => {
-                          const def = JSON.stringify([...(defaults[gid] || [])].sort());
-                          const cur = JSON.stringify([...(choices[gid] || [])].sort());
-                          return def !== cur;
-                        });
-                        return (
-                          <>
-                            {hasRequired && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 8, background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74", flexShrink: 0 }}>נדרש</span>}
-                            {hasGroups && !hasRequired && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 8, background: "#f5f3ff", color: "#7c3aed", border: "1px solid #c4b5fd", flexShrink: 0 }}>⚙</span>}
-                            {hasChanges && <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 8, background: "#eff6ff", color: "#2563eb", border: "1px solid #93c5fd", flexShrink: 0 }}>שונה</span>}
-                          </>
-                        );
-                      })()}
-                    </div>
+<div style={{ width: 190, display: "flex", flexDirection: "column", flexShrink: 0, background: "#f9fafb", borderLeft: "1px solid #e5e7eb"}}>
+  <div style={{ padding: "8px 10px", borderBottom: "1px solid #e5e7eb", fontSize: 10, fontWeight: 700, color: "#6b7280", direction: "rtl", flexShrink: 0 }}>בתצוגה</div>
+  <div style={{ flex: 1, overflowY: "auto" }}>
+    {preview.size === 0 && <div style={{ padding: 12, fontSize: 11, color: "#9ca3af", textAlign: "center" }}>לא נבחרו פריטים</div>}
+    {[...preview.values()].map(({ item, choices }) => {
+      const isSel = selectedId === item.id;
+      const groups = item.groups || [];
+      const hasGroups = groups.length > 0;
+      const hasRequired = groups.some(g => g.min > 0 && g.type !== 'mgss');
+      const defaults = initChoices(groups);
+      const hasChanges = hasGroups && Object.keys(defaults).some(gid => {
+        const def = JSON.stringify([...(defaults[gid] || [])].sort());
+        const cur = JSON.stringify([...(choices[gid] || [])].sort());
+        return def !== cur;
+      });
 
-                    <button onClick={e => { e.stopPropagation(); toggleItem(item); }}
-                      style={{ marginTop: 3, fontSize: 10, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "var(--sans)" }}>
-                      הסר
-                    </button>
-                  </div>
-                );
-              })}
+      // בנה רשימת שינויים לתצוגה
+      const changeLines = [];
+groups.forEach(g => {
+  const def = defaults[g.id] || [];
+  const cur = choices[g.id] || [];
+
+  // מה הוסר (היה בברירת מחדל, אין עכשיו)
+  def.forEach(memberId => {
+    if (!cur.includes(memberId)) {
+      const member = g.members.find(m => m.id === memberId);
+      if (member) changeLines.push(`ללא ${member.name}`);
+    }
+  });
+
+  // מה נוסף (לא היה בברירת מחדל, יש עכשיו)
+  cur.forEach(memberId => {
+    if (!def.includes(memberId)) {
+      const member = g.members.find(m => m.id === memberId);
+      if (member) changeLines.push(`עם ${member.name}`);
+    }
+  });
+});
+
+      return (
+        <div key={item.id} onClick={() => setSelectedId(isSel ? null : item.id)}
+          style={{
+            padding: "8px 10px 8px 10px", direction: "rtl", cursor: "pointer",
+            borderBottom: "1px solid #e5e7eb",
+            background: isSel ? "#f0fdf4" : "#fff",
+            borderRight: `3px solid ${isSel ? "var(--bm)" : "transparent"}`,
+            position: "relative", overflow: "hidden",
+          }}
+        >
+          {/* אינדיקציה: יש קבוצות — פינה שמאל למעלה */}
+          {hasGroups && (
+            <div style={{
+              position: "absolute", top: 0, left: 0,
+              background: hasRequired ? "#f2b230" : "#0B4440",
+              color: "#fff", fontSize: 9, fontWeight: 700,
+              padding: "4px 10px 4px 10px",
+              borderRadius: "0 0 8px 0",
+              lineHeight: 1,
+            }}>
+              {groups.length}
             </div>
+          )}
+
+          {/* אינדיקציה: עבר שינוי — פינה שמאל למטה */}
+          {hasChanges && (
+            <div style={{
+              position: "absolute", bottom: 0, left: 0,
+              background: "#73DED7", color: "#fff",
+              fontSize: 8, fontWeight: 700,
+              padding: "4px 8px 4px 8px",
+              borderRadius: "0 8px 0 0",
+              lineHeight: 1,
+            }}>
+              <PenLine size={8} color="#fff" strokeWidth={2.5} />
+            </div>
+          )}
+
+          {/* שם הפריט */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#1a2332", marginBottom: changeLines.length ? 4 : 0 }}>
+            {item.name}
           </div>
+
+          {/* שורות שינויים */}
+          {changeLines.map((line, i) => (
+            <div key={i} style={{
+              fontSize: 10, color: "#4b5563", lineHeight: 1.4,
+              paddingRight: 6, borderRight: "2px solid #d1d5db",
+              marginBottom: 1,
+            }}>
+              {line}
+            </div>
+          ))}
+
+          {/* כפתור הסר */}
+          <button
+            onClick={e => { e.stopPropagation(); toggleItem(item); }}
+            style={{
+              marginTop: 6, fontSize: 10, fontWeight: 600,
+              color: "#fff", background: "#ef4444",
+              border: "none", borderRadius: 5,
+              cursor: "pointer", padding: "2px 8px",
+              fontFamily: "var(--sans)",
+            }}
+          >
+            הסר
+          </button>
+        </div>
+      );
+    })}
+  </div>
+</div>
         </div>
 
         {/* footer */}

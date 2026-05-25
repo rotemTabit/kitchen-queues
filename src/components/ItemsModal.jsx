@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 
 // ── depth labels & colors ─────────────────────────────────
@@ -51,8 +51,12 @@ function filterTree(nodes, q) {
 }
 
 // ── Left panel tree node ──────────────────────────────────
-function SourceNode({ node, depth, selected, onSelect, forceOpen }) {
-  const [open, setOpen] = useState(forceOpen || hasSelectedDescendant(node, selected));
+function SourceNode({ node, depth, selected, onSelect, forceOpen, forceCmd }) {
+  const [open, setOpen] = useState(forceOpen === true || hasSelectedDescendant(node, selected));
+  useEffect(() => {
+    if (!forceCmd) return;
+    setOpen(forceCmd.dir === 'open');
+  }, [forceCmd?.tick]);
   const hasChildren = (node.children || []).length > 0;
   const hasItems    = (node.items || []).length > 0;
 
@@ -104,15 +108,25 @@ function SourceNode({ node, depth, selected, onSelect, forceOpen }) {
           </span>
           {node.display || node.name}
         </span>
-        {hasItems && (
-          <span style={{ fontSize: 10, color: "#aaa" }}>{node.items.length}</span>
-        )}
+        {(() => {
+          const { itemIds } = collectAllIds(node);
+          const total = itemIds.length;
+          const selCount2 = itemIds.filter(id => selected.has(id)).length;
+          return total > 0 ? (
+            <span style={{
+              fontSize: 10, color: selCount2 > 0 ? "var(--bm)" : "#9ca3af",
+              fontWeight: selCount2 > 0 ? 700 : 400, marginLeft: 2,
+            }}>
+              {selCount2 > 0 ? `${selCount2}/` : ""}{total} פריטים
+            </span>
+          ) : null;
+        })()}
       </div>
 
       {open && (
         <div>
           {node.children?.map(child => (
-            <SourceNode key={child.id} node={child} depth={depth + 1} selected={selected} onSelect={onSelect} forceOpen={forceOpen} />
+            <SourceNode key={child.id} node={child} depth={depth + 1} selected={selected} onSelect={onSelect} forceOpen={forceOpen} forceCmd={forceCmd} />
           ))}
           {hasItems && node.items.map(item => {
             const sel = selected.has(item.id);
@@ -143,8 +157,8 @@ function SourceNode({ node, depth, selected, onSelect, forceOpen }) {
                 </div>
                 <span style={{ fontSize: 11, color: "#374151", flex: 1 }}>{item.name}</span>
                 {item.external_id && (
-                  <span style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace", background: "#f3f4f6", padding: "1px 5px", borderRadius: 3 }}>
-                    {item.external_id}
+                  <span style={{ fontSize: 10, color: "#6366f1", fontFamily: "monospace", background: "#eef2ff", border: "1px solid #c7d2fe", padding: "1px 5px", borderRadius: 3 }}>
+                    #&thinsp;{item.external_id}
                   </span>
                 )}
               </div>
@@ -157,7 +171,8 @@ function SourceNode({ node, depth, selected, onSelect, forceOpen }) {
 }
 
 // ── Right panel — selected summary ────────────────────────
-function SelectedPanel({ tree, selected, printAll, onRemove }) {
+function SelectedPanel({ tree, selected, printAll, onRemove, rightCmd }) {
+  const [rightSearch, setRightSearch] = useState('');
   const selectedTree = useMemo(() => {
     function filter(nodes) {
       return nodes.reduce((acc, node) => {
@@ -171,6 +186,8 @@ function SelectedPanel({ tree, selected, printAll, onRemove }) {
     }
     return filter(tree);
   }, [tree, selected]);
+
+  const visibleTree = useMemo(() => filterTree(selectedTree, rightSearch), [selectedTree, rightSearch]);
 
   const allCatIds = useMemo(() => {
     const ids = [];
@@ -204,6 +221,13 @@ function SelectedPanel({ tree, selected, printAll, onRemove }) {
 
   function RightNode({ node, depth }) {
     const [open, setOpen] = useState(true);
+    useEffect(() => {
+      if (!rightCmd) return;
+      setOpen(rightCmd.dir === 'open');
+    }, [rightCmd?.tick]);
+    const { itemIds } = collectAllIds(node);
+    const total = itemIds.length;
+    const selInNode = itemIds.filter(id => selected.has(id)).length;
     return (
       <div>
         <div style={{
@@ -226,6 +250,15 @@ function SelectedPanel({ tree, selected, printAll, onRemove }) {
               {depthMeta(depth).label}
             </span>
             {node.display || node.name}
+            {total > 0 && (
+              <span style={{
+                fontSize: 9, padding: "1px 6px", borderRadius: 10,
+                background: "rgba(29,158,117,0.1)", color: "var(--bm)",
+                fontWeight: 700, flexShrink: 0,
+              }}>
+                {selInNode}/{total}
+              </span>
+            )}
             {node._catSelected && (
               <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 10, background: "#f0fdf4", color: "var(--bm)", border: "1px solid #bbf7d0", fontWeight: 500, flexShrink: 0 }}>כל הפריטים</span>
             )}
@@ -252,8 +285,8 @@ function SelectedPanel({ tree, selected, printAll, onRemove }) {
                 <span style={{ width: 12, marginRight: (depth + 1) * 14, flexShrink: 0 }} />
                 <span style={{ fontSize: 11, color: "#374151", flex: 1 }}>{item.name}</span>
                 {item.external_id && (
-                  <span style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace", background: "#f3f4f6", padding: "1px 4px", borderRadius: 3 }}>
-                    {item.external_id}
+                  <span style={{ fontSize: 10, color: "#6366f1", fontFamily: "monospace", background: "#eef2ff", border: "1px solid #c7d2fe", padding: "1px 4px", borderRadius: 3 }}>
+                    #&thinsp;{item.external_id}
                   </span>
                 )}
                 <span
@@ -269,11 +302,21 @@ function SelectedPanel({ tree, selected, printAll, onRemove }) {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto" }}>
-      <div style={{ padding: "6px 10px", background: "#f0fdf6", borderBottom: "1px solid var(--bdr)", direction: "rtl", fontSize: 11, color: "var(--bm)", fontWeight: 600 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* שורת חיפוש + סיכום */}
+      <div style={{ padding: "8px 10px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
+        <input
+          type="text" value={rightSearch} onChange={e => setRightSearch(e.target.value)}
+          placeholder="חיפוש..."
+          style={{ width: "100%", padding: "5px 10px", borderRadius: 6, border: "1.5px solid #e5e7eb", fontSize: 12, outline: "none", direction: "rtl", fontFamily: "var(--sans)", background: "#f9fafb", boxSizing: "border-box" }}
+        />
+      </div>
+      <div style={{ padding: "4px 10px", background: "#f0fdf6", borderBottom: "1px solid var(--bdr)", direction: "rtl", fontSize: 11, color: "var(--bm)", fontWeight: 600, flexShrink: 0 }}>
         {selCatCount > 0 && `${selCatCount} קטגוריות`}{selCatCount > 0 && selItemCount > 0 && " · "}{selItemCount > 0 && `${selItemCount} פריטים`} נבחרו
       </div>
-      {selectedTree.map(node => <RightNode key={node.id} node={node} depth={0} />)}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {visibleTree.map(node => <RightNode key={node.id} node={node} depth={0} />)}
+      </div>
     </div>
   );
 }
@@ -286,6 +329,8 @@ export default function ItemsModal({
   onSave, onClose,
 }) {
   const [search, setSearch] = useState("");
+  const [leftCmd,  setLeftCmd]  = useState({ dir: 'open', tick: 0 });
+  const [rightCmd, setRightCmd] = useState({ dir: 'open', tick: 0 });
 
   const initSelected = useMemo(() => {
     return new Set(printAll ? [...excCats, ...excItems] : [...incCats, ...incItems]);
@@ -325,7 +370,13 @@ export default function ItemsModal({
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", borderLeft: "1px solid #e5e7eb" }}>
             <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", marginBottom: 6, direction: "rtl" }}>{leftTitle}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, direction: "rtl" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280" }}>{leftTitle}</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button onClick={() => setLeftCmd(p => ({ dir:'open',  tick: p.tick+1 }))} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280", cursor: "pointer", fontFamily: "var(--sans)" }}>פתח הכל</button>
+                  <button onClick={() => setLeftCmd(p => ({ dir:'close', tick: p.tick+1 }))} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280", cursor: "pointer", fontFamily: "var(--sans)" }}>סגור הכל</button>
+                </div>
+              </div>
               <input
                 type="text" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="חיפוש..."
@@ -334,16 +385,22 @@ export default function ItemsModal({
             </div>
             <div style={{ flex: 1, overflowY: "auto" }}>
               {filteredTree.map(node => (
-                <SourceNode key={node.id} node={node} depth={0} selected={selected} onSelect={setSelected} forceOpen={!!search} />
+                <SourceNode key={node.id} node={node} depth={0} selected={selected} onSelect={setSelected} forceCmd={leftCmd} forceOpen={!!search} />
               ))}
             </div>
           </div>
 
           <div style={{ width: 450, display: "flex", flexDirection: "column", flexShrink: 0 }}>
             <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: rightColor, direction: "rtl" }}>{rightTitle}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", direction: "rtl" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: rightColor }}>{rightTitle}</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button onClick={() => setRightCmd(p => ({ dir:'open',  tick: p.tick+1 }))} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280", cursor: "pointer", fontFamily: "var(--sans)" }}>פתח הכל</button>
+                  <button onClick={() => setRightCmd(p => ({ dir:'close', tick: p.tick+1 }))} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280", cursor: "pointer", fontFamily: "var(--sans)" }}>סגור הכל</button>
+                </div>
+              </div>
             </div>
-            <SelectedPanel tree={tree} selected={selected} printAll={printAll} onRemove={setSelected} />
+            <SelectedPanel tree={tree} selected={selected} printAll={printAll} onRemove={setSelected} rightCmd={rightCmd} />
           </div>
         </div>
 

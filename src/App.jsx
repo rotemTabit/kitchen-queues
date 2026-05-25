@@ -7,8 +7,9 @@ import ZoneButtons from "./components/ZoneButtons";
 import CtxPanel from "./components/CtxPanel";
 import FloatingToolbar from "./components/FloatingToolbar";
 import OtBar from "./components/OtBar";
-import { useMenu, useMenuWithGroups } from "./hooks/useSupabase";
+import { useMenu, useMenuWithGroups, useBon, useBons, saveBon, deleteBon } from "./hooks/useSupabase";
 import { buildElements } from "./utils/buildElements";
+import { buildPayload } from "./utils/buildPayload";
 
 // ══════════════════════════════════════════════════════════
 // STYLES
@@ -29,7 +30,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .app{display:flex;height:100vh;overflow:hidden}
 .left{width:67%;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid rgba(255,255,255,.1);background:var(--bgpreview)}
 .right{width:33%;display:flex;flex-direction:column;overflow:hidden;background:white;position:relative}
-.topbar{height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;border-bottom:1px solid var(--bdr)}
+.topbar{height:55px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;border-bottom:1px solid var(--bdr)}
 .left .topbar{background:rgba(11,68,64,.6);border-bottom:1px solid rgba(255,255,255,.1)}
 .right .topbar{background:#fff}
 .tb-brand{display:flex;align-items:center;gap:8px}
@@ -43,14 +44,18 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .btn-save{padding:5px 14px;border-radius:6px;border:none;background:var(--ba);cursor:pointer;color:var(--bd);font-size:12px;font-family:var(--sans);font-weight:700;transition:all .15s}
 .btn-save:hover{background:#5ecfc8}
 .tb-dot{width:8px;height:8px;border-radius:50%;background:var(--ba)}
-.ot-bar{display:flex;gap:6px;padding:8px 10px 6px;border-bottom:1px solid rgba(255,255,255,.1);flex-wrap:wrap;background:var(--bgpreview);justify-content:center}
-.ot-btn{padding:4px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.7);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .15s}
+.ot-bar{display:flex;flex-direction:column;gap:2px;padding:2px 2px 2px 2px;background:var(--bgpreview);align-items:center}
+.ot-bar-label{font-size:10px;font-weight:600;color:rgba(255,255,255,1);letter-spacing:.3px;font-family:var(--sans)}
+.ot-bar-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.ot-btn{padding:3px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.7);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .15s}
 .ot-btn:hover{background:rgba(255,255,255,.1);color:#fff}
 .ot-btn.active{background:var(--ba);border-color:var(--ba);color:var(--bd);font-weight:700}
 .prev{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;background:#e3e1e1;position:relative}
 .prev-controls{width:290px;display:flex;gap:6px;align-items:center}
 .preview-item-btn{flex:1;padding:6px 10px;border-radius:6px;border:1px solid rgba(0,0,0,1);background:rgba(255,255,255,1);cursor:pointer;font-size:11px;font-family:var(--sans);color:#000000;font-weight:500;display:flex;align-items:center;gap:5px;transition:all .15s;justify-content:center}
 .preview-item-btn:hover{background:#0B4440;color:white;border-color:rgba(255,255,255,.4)}
+.clear-item-btn{border-radius:6px;border:1px solid rgba(0,0,0,1);background:rgba(255,255,255,1);cursor:pointer;font-size:11px;font-family:var(--sans);color:#000000;font-weight:500;display:flex;align-items:center;gap:5px;transition:all .15s;justify-content:center}
+.clear-item-btn:hover{background:#0B4440;color:white;border-color:rgba(255,255,255,.4)}
 .chips-area{width:290px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .chips-bar{display:flex;flex-wrap:wrap;gap:4px;flex:1}
 .pi-chip{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-family:var(--sans);cursor:pointer;border:1px solid rgba(255,255,255,.2)}
@@ -75,7 +80,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .tsep{width:1px;height:16px;background:var(--bdr);margin:0 2px}
 .tsz{padding:2px 6px;border-radius:4px;font-size:11px;font-family:var(--mono);color:var(--sub);cursor:pointer;background:#f0f2f4}
 .tcl{padding:4px 7px;border-radius:5px;font-size:11px;cursor:pointer;color:#e53935;background:#fff0f0;border:none}
-.tabs{display:flex;border-bottom:1px solid var(--bdr);padding:0 8px;flex-shrink:0;justify-content:center;}
+.tabs{display:flex;border-bottom:1px solid var(--bdr);padding:2.5px 8px;flex-shrink:0;justify-content:center;}
 .tab{padding:10px 14px;font-size:12px;font-family:var(--sans);color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 .tab:hover{color:var(--text)}
 .tab.on{color:var(--bm);border-bottom-color:var(--bm);font-weight:600}
@@ -203,7 +208,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .gconf-footer button{padding:6px 16px;border-radius:6px;font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:600}
 .gconf-footer .g-back{border:1px solid var(--bdr);background:#fff;color:var(--sub)}
 .gconf-footer .g-next{border:none;background:var(--bm);color:#fff}
-.ctx-panel{position:absolute;top:50px;left:0;width:100%;height:calc(100% - 50px);background:var(--bg);z-index:200;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.ctx-panel{position:absolute;top:60px;left:0;width:100%;height:calc(100% - 50px);background:var(--bg);z-index:200;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
 .ctx-panel.open{transform:translateX(0)}
 .ctx-panel-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--bd);color:#fff;flex-shrink:0}
 .ctx-panel-back{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;line-height:1;padding:2px 6px}
@@ -254,9 +259,54 @@ export default function App() {
   const [orderTypes, setOrderTypes]           = useState([]);
   const [sources, setSources]                 = useState([]);
   const [pickerOpen, setPickerOpen]           = useState(false);
+  const [selectedPrinters, setSelectedPrinters] = useState([]);
+  const [copies, setCopies]                   = useState(1);
+  const DEFAULT_BON_ID = '05562a5c-41f8-4438-8d5b-b032dd97fcd5';
+  const [bonId, setBonId]                     = useState(DEFAULT_BON_ID);
+  const [bonPickerOpen, setBonPickerOpen]     = useState(false);
+  const [bonsRefreshKey, setBonsRefreshKey]   = useState(0);
+  const [confirmDialog, setConfirmDialog]     = useState(null);
+  // confirmDialog = { msg, sub, onConfirm } | null
 
   const { menu } = useMenu();
   const { enriched: allEnriched, loading: menuLoading } = useMenuWithGroups();
+  const { bons, loading: bonsLoading } = useBons(bonsRefreshKey);
+  const { bon: loadedBon, loading: bonLoading } = useBon(bonId);
+
+  // ── loadBon: DB row → App state ──────────────────────────
+  const loadBonIntoState = useCallback((bon) => {
+    if (!bon) return;
+    setBonId(bon.id);
+    setBonName(bon.name || '');
+    setTemplate(bon.template_id || null);
+    setOrderTypes(bon.order_types || []);
+    setSources(bon.sources || []);
+    setSelectedPrinters(bon.printer_ids || []);
+    setCopies(bon.copies || 1);
+    setElOrd(bon.element_order || []);
+    setElSt(bon.element_overrides || {});
+    // בנה params מהשדות הנפרדים + params jsonb
+    const rebuilt = {
+      ...(bon.params || {}),
+      PRINT_ALL_ITEMS: bon.print_all_items || false,
+      INC_CATS:  bon.inc_cats  || [],
+      EXC_CATS:  bon.exc_cats  || [],
+      INC_ITEMS: bon.inc_items || [],
+      EXC_ITEMS: bon.exc_items || [],
+      KDS_ONLY:  bon.kds_only  || false,
+      AGGREGATE: bon.aggregate || false,
+      IGNORE_ALL_MODIFIERS: bon.with_modifiers === false,
+    };
+    setParams(rebuilt);
+  }, []);
+
+  // ── טעינה ראשונית ──────────────────────────────────────
+  const initialLoaded = useRef(false);
+  useEffect(() => {
+    if (bonLoading || !loadedBon || initialLoaded.current) return;
+    initialLoaded.current = true;
+    loadBonIntoState(loadedBon);
+  }, [bonLoading, loadedBon]);
 
 
   // ── helper: build random choices for an item ──────────
@@ -326,13 +376,33 @@ export default function App() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2500);
   };
-  const handleSave = () => {
+  const doSave = async () => {
+    const payload = buildPayload({
+      bonId, bonName, template, params,
+      orderTypes, sources, selectedPrinters,
+      copies, elOrd, elSt,
+    });
+    const { data, error } = await saveBon(bonId, payload);
+    if (error) {
+      showToast("שגיאה בשמירה ✗", "error");
+      console.error("saveBon error:", error);
+      return;
+    }
+    if (data?.id) setBonId(data.id);
     snapshotRef.current = JSON.stringify({ bonName, template, params, orderTypes, sources });
     setSnapshot({ bonName, template, params: {...params}, orderTypes: [...(orderTypes||[])], sources: [...(sources||[])] });
     setIsDirty(false);
     showToast("הבון נשמר בהצלחה ✓");
   };
-  const handleRestore = () => {
+  const handleSave = () => {
+    setConfirmDialog({
+      msg: 'שמירת הבון',
+      sub: 'שמירת הבון תשפיע על ההדפסה שלו באופן מיידי. לא ניתן לבטל את הפעולה.',
+      variant: 'save',
+      onConfirm: doSave,
+    });
+  };
+  const doRestore = () => {
     if (!snapshot) return;
     setBonName(snapshot.bonName);
     setTemplate(snapshot.template);
@@ -343,12 +413,45 @@ export default function App() {
     setIsDirty(false);
     showToast("ההגדרות שוחזרו ✓", "restore");
   };
-  const handleDuplicate = () => {
-    navigator.clipboard?.writeText(JSON.stringify({ bonName: bonName + " (עותק)", template, params, orderTypes, sources }, null, 2));
-    showToast("הבון הועתק ללוח ✓");
+  const handleRestore = () => {
+    if (!snapshot) return;
+    setConfirmDialog({
+      msg: 'שחזור הבון',
+      sub: 'שחזור הבון יבטל את כל השינויים שביצעת. האם להמשיך?',
+      variant: 'warning',
+      onConfirm: doRestore,
+    });
+  };
+  const handleDuplicate = async () => {
+    const payload = buildPayload({
+      bonId: null, bonName: bonName + " (עותק)", template, params,
+      orderTypes, sources, selectedPrinters, copies, elOrd, elSt,
+    });
+    const { data, error } = await saveBon(null, payload);
+    if (error) { showToast("שגיאה בשכפול ✗", "error"); return; }
+    setBonsRefreshKey(k => k + 1);
+    showToast("הבון שוכפל ✓");
   };
   const handleDelete = () => {
-    if (window.confirm("למחוק את הבון?")) showToast("הבון נמחק ✓", "restore");
+    if (bonId === DEFAULT_BON_ID) {
+      showToast("לא ניתן למחוק את הבון הראשי ✗", "error");
+      return;
+    }
+    setConfirmDialog({
+      msg: 'מחיקת הבון',
+      sub: 'לאחר המחיקה, לא ניתן לבטל את הפעולה. האם אתה בטוח?',
+      variant: 'danger',
+      onConfirm: async () => {
+        const { error } = await deleteBon(bonId);
+        if (error) { showToast("שגיאה במחיקה ✗", "error"); return; }
+        setBonsRefreshKey(k => k + 1);
+        // חזרה לבון הדיפולטיבי
+        initialLoaded.current = false;
+        setBonId(DEFAULT_BON_ID);
+        setIsDirty(false);
+        showToast("הבון נמחק ✓");
+      },
+    });
   };
   const isRestoreDisabled = !snapshot ||
     JSON.stringify({ bonName, template, params, orderTypes, sources }) === JSON.stringify(snapshot);
@@ -484,7 +587,10 @@ export default function App() {
         <div className="left">
           <div className="topbar">
             <div className="tb-btns" dir='rtl'>
-              <button className="btn-ghost" dir='rtl'>ייצא JSON</button>
+              <button className="btn-ghost" dir='rtl' onClick={() => { setBonPickerOpen(true); setBonsRefreshKey(k => k + 1); }}
+                style={{ display:"flex", alignItems:"center", gap:4 }}>
+                <ReceiptText size={12}/> בחירת בון
+              </button>
               <button onClick={handleDelete} style={{
                 display:"flex", alignItems:"center", gap:4,
                 padding:"4px 9px", borderRadius:6, fontSize:11,
@@ -556,7 +662,7 @@ export default function App() {
             <div style={{ width: 290, display: "flex", flexDirection: "column", gap: 6 }}>
               {/* Row 1: main picker button + clear */}
               <div style={{ display: "flex", gap: 6 }}>
-                <button className="preview-item-btn" style={{ flex: 1 }} onClick={() => setPickerOpen(true)}>
+                <button className="preview-item-btn" dir='rtl' style={{ flex: 1 }} onClick={() => setPickerOpen(true)}>
                   <svg viewBox="0 0 14 14" fill="none" width="13" height="13">
                     <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
                     <path d="M7 4v6M4 7h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -567,9 +673,9 @@ export default function App() {
                   }
                 </button>
                 {previewItems.length > 0 && (
-                  <button
+                  <button className="clear-item-btn"
                     onClick={e => { e.stopPropagation(); setPreviewItems([]); setUserSelected(false); }}
-                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.7)", fontSize: 13, cursor: "pointer", fontFamily: "var(--sans)", flexShrink: 0 }}
+                    style={{ padding: "4px 10px", fontSize: 13, cursor: "pointer", fontFamily: "var(--sans)", flexShrink: 0 }}
                     title="נקה פריטים"
                   >✕</button>
                 )}
@@ -618,8 +724,8 @@ export default function App() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(el.id, e)}
                     onDragEnd={() => setDragId(null)}
-                    flash={flashZone === el.zone}
-                    flashKey={flashZone === el.zone ? flashCount : 0}
+                    flash={flashZone === '__all__' || flashZone === el.zone}
+                    flashKey={(flashZone === '__all__' || flashZone === el.zone) ? flashCount : 0}
                   />
                 ))}
               </div>
@@ -630,15 +736,17 @@ export default function App() {
         {/* ── RIGHT: SETTINGS ── */}
         <div className="right">
           <SettingsPanel
-            bonName={bonName}       setBonName={setBonName}
-            template={template}     setTemplate={setTemplate}
-            params={params}         onParamChange={onParamChange}
-            orderTypes={orderTypes} setOrderTypes={setOrderTypes}
-            sources={sources}       setSources={setSources}
+            bonName={bonName}           setBonName={setBonName}
+            template={template}         setTemplate={setTemplate}
+            params={params}             onParamChange={onParamChange}
+            orderTypes={orderTypes}     setOrderTypes={setOrderTypes}
+            sources={sources}           setSources={setSources}
             menu={menu}
+            selectedPrinters={selectedPrinters} setSelectedPrinters={setSelectedPrinters}
+            copies={copies}             setCopies={setCopies}
           />
           {/* ── CTX PANEL ── */}
-          <CtxPanel zone={ctxZone} onClose={() => setCtxZone(null)} params={params} onParamChange={onParamChange} template={template} />
+          <CtxPanel zone={ctxZone} onClose={() => setCtxZone(null)} params={params} onParamChange={onParamChange} template={template} onBonFlash={() => { setFlashZone('__all__'); setFlashCount(c => c+1); setTimeout(() => setFlashZone(null), 600); }} />
         </div>
       </div>
 
@@ -672,6 +780,166 @@ export default function App() {
           fontFamily:"var(--sans)", fontWeight:600,
           boxShadow:"0 4px 20px rgba(0,0,0,.2)", zIndex:9999,
         }}>{toast.msg}</div>
+      )}
+
+      {/* ── Bon Picker Modal ── */}
+      {bonPickerOpen && (
+        <div style={{
+          position:"fixed", inset:0, background:"rgba(0,0,0,0.45)",
+          zIndex:9998, display:"flex", alignItems:"center", justifyContent:"center",
+        }} onClick={() => setBonPickerOpen(false)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background:"#fff", borderRadius:14, width:420,
+              maxHeight:"70vh", display:"flex", flexDirection:"column",
+              boxShadow:"0 20px 60px rgba(0,0,0,.25)", overflow:"hidden",
+              fontFamily:"var(--sans)",
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              padding:"14px 18px", background:"var(--bd)", color:"#fff", flexShrink:0,
+            }}>
+              <span style={{ fontSize:15, fontWeight:700 }}>בחירת בון</span>
+              <button onClick={() => setBonPickerOpen(false)}
+                style={{ background:"none", border:"none", color:"rgba(255,255,255,.7)", fontSize:20, cursor:"pointer" }}>✕</button>
+            </div>
+
+            {/* רשימת בונים */}
+            <div style={{ flex:1, overflowY:"auto" }}>
+              {bonsLoading && (
+                <div style={{ padding:24, textAlign:"center", color:"var(--sub)", fontSize:12 }}>טוען...</div>
+              )}
+              {!bonsLoading && bons.map(b => {
+                const isCurrent = b.id === bonId;
+                return (
+                  <div
+                    key={b.id}
+                    onClick={() => {
+                      if (isCurrent) { setBonPickerOpen(false); return; }
+                      if (isDirty) {
+                        setConfirmDialog({
+                          msg: 'מעבר לבון אחר',
+                          sub: 'יש שינויים שלא נשמרו. המעבר יבטל אותם. להמשיך?',
+                          variant: 'warning',
+                          onConfirm: () => {
+                            initialLoaded.current = false;
+                            setBonId(b.id);
+                            setIsDirty(false);
+                            setBonPickerOpen(false);
+                          },
+                        });
+                      } else {
+                        initialLoaded.current = false;
+                        setBonId(b.id);
+                        setBonPickerOpen(false);
+                      }
+                    }}
+                    style={{
+                      padding:"12px 18px", borderBottom:"1px solid var(--bdr)",
+                      cursor:"pointer", direction:"rtl",
+                      background: isCurrent ? "rgba(29,158,117,0.07)" : "#fff",
+                      borderRight: isCurrent ? "3px solid var(--bm)" : "3px solid transparent",
+                      transition:"background .1s",
+                    }}
+                    onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background="#f0fdf6"; }}
+                    onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background="#fff"; }}
+                  >
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                      <span style={{ fontSize:13, fontWeight:700, color:"var(--bd)", flex:1 }}>{b.name}</span>
+                      {isCurrent && (
+                        <span style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"var(--bm)", color:"#fff", fontWeight:600 }}>פעיל</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize:11, color:"var(--sub)", display:"flex", gap:10 }}>
+                      {b.template_id && <span>תבנית: {b.template_id}</span>}
+                      <span>עודכן: {new Date(b.updated_at).toLocaleDateString('he-IL')}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer — בון חדש */}
+            <div style={{ padding:"10px 18px", borderTop:"1px solid var(--bdr)", background:"#f8fafb", flexShrink:0 }}>
+              <button
+                onClick={() => {
+                  setBonName("בון חדש");
+                  setTemplate(null);
+                  setParams({});
+                  setOrderTypes([]);
+                  setSources([]);
+                  setSelectedPrinters([]);
+                  setCopies(1);
+                  setElOrd([]);
+                  setElSt({});
+                  setBonId(null);
+                  setIsDirty(false);
+                  initialLoaded.current = true;
+                  setBonPickerOpen(false);
+                }}
+                style={{
+                  width:"100%", padding:"9px", borderRadius:8, border:"1.5px dashed var(--bm)",
+                  background:"transparent", color:"var(--bm)", fontSize:13, fontWeight:700,
+                  cursor:"pointer", fontFamily:"var(--sans)",
+                }}
+              >+ בון חדש</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirm Dialog ── */}
+      {confirmDialog && (
+        <div style={{
+          position:"fixed", inset:0, background:"rgba(0,0,0,0.45)",
+          zIndex:9998, display:"flex", alignItems:"center", justifyContent:"center",
+        }} onClick={() => setConfirmDialog(null)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background:"#fff", borderRadius:14, padding:"28px 28px 22px",
+              width:360, boxShadow:"0 20px 60px rgba(0,0,0,.25)",
+              direction:"rtl", fontFamily:"var(--sans)",
+            }}
+          >
+            {/* אייקון לפי סוג */}
+            <div style={{ textAlign:"center", marginBottom:14, fontSize:32 }}>
+              {confirmDialog.variant === 'danger'  && '🗑️'}
+              {confirmDialog.variant === 'warning' && '↩️'}
+              {confirmDialog.variant === 'save'    && '💾'}
+            </div>
+            <div style={{ fontSize:16, fontWeight:700, color:"var(--bd)", marginBottom:10, textAlign:"center" }}>
+              {confirmDialog.msg}
+            </div>
+            <div style={{ fontSize:13, color:"#5a6a7a", lineHeight:1.6, textAlign:"center", marginBottom:22 }}>
+              {confirmDialog.sub}
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+              <button
+                onClick={() => setConfirmDialog(null)}
+                style={{
+                  flex:1, padding:"9px 0", borderRadius:8, fontSize:13, fontWeight:600,
+                  border:"1.5px solid var(--bdr)", background:"#fff",
+                  color:"var(--sub)", cursor:"pointer", fontFamily:"var(--sans)",
+                }}
+              >ביטול</button>
+              <button
+                onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                style={{
+                  flex:1, padding:"9px 0", borderRadius:8, fontSize:13, fontWeight:700,
+                  border:"none", cursor:"pointer", fontFamily:"var(--sans)",
+                  background: confirmDialog.variant === 'danger'  ? "#ef4444"
+                             : confirmDialog.variant === 'warning' ? "var(--bm)"
+                             : "var(--ba)",
+                  color: confirmDialog.variant === 'save' ? "var(--bd)" : "#fff",
+                }}
+              >אישור</button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

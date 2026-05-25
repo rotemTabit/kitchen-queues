@@ -8,6 +8,15 @@ import {
 
 const GENERAL_ZONE = 'general';
 
+// ── Zone picker options ───────────────────────────────────────────────────
+const ZONE_PICKER_OPTIONS = [
+  { id: 'general', label: 'הגדרות כלליות של הבון',      icon: '⚙️' },
+  { id: 'header',  label: 'עריכת ראש הבון',              icon: '📄' },
+  { id: 'items',   label: 'עריכת אזור הפריטים והמשנים',  icon: '🍽️' },
+  { id: 'footer',  label: 'עריכת תחתית הבון',            icon: '📋' },
+  { id: '__all__', label: 'כל הפרמטרים',                 icon: '☰'  },
+];
+
 const findParam = (id, zone) => {
   for (const cat of Object.values(zone.cats))
     for (const p of cat) if (p.id === id) return p;
@@ -16,21 +25,21 @@ const findParam = (id, zone) => {
 
 // ── Dynamic select source hook ────────────────────────────────────────────
 function useSelectOpts(src) {
-  const tagsItem    = useTags('item');
-  const tagsCourse  = useTags('course');
-  const profiles    = useWorkflowProfiles();
-  const views       = useMenuViews();
-  const modGroups   = useModifierGroups();
-  const igGroups    = useIgGroups();
+  const tagsItem   = useTags('item');
+  const tagsCourse = useTags('course');
+  const profiles   = useWorkflowProfiles();
+  const views      = useMenuViews();
+  const modGroups  = useModifierGroups();
+  const igGroups   = useIgGroups();
 
   switch (src) {
-    case 'tags_item':        return tagsItem.map(t => t.tag_name);
-    case 'tags_course':      return tagsCourse.map(t => t.tag_name);
-    case 'workflow_profiles':return profiles.map(p => `${p.type_display_name} — ${p.name}`);
-    case 'menu_views':       return views.map(v => v.name);
-    case 'modifier_groups':  return modGroups;
-    case 'ig_groups':        return igGroups;
-    default:                 return src || [];
+    case 'tags_item':         return tagsItem.map(t => t.tag_name);
+    case 'tags_course':       return tagsCourse.map(t => t.tag_name);
+    case 'workflow_profiles': return profiles.map(p => `${p.type_display_name} — ${p.name}`);
+    case 'menu_views':        return views.map(v => v.name);
+    case 'modifier_groups':   return modGroups;
+    case 'ig_groups':         return igGroups;
+    default:                  return src || [];
   }
 }
 
@@ -62,10 +71,11 @@ function MultiParam({ p, params, onParamChange }) {
             <input
               type="text" value={val}
               onChange={e => change(i, e.target.value)}
-              placeholder="הזן ערך..."
+              className='input-white'
+              placeholder="הזן ערך"
               style={{ flex: 1, fontSize: 11, padding: '3px 6px',
                        border: '1px solid var(--ba)', borderRadius: 5,
-                       background: 'var(--bm)', color: 'var(--bd)' }}
+                       background: 'white', color: 'var(--bd)' }}
             />
           )}
           <button onClick={() => remove(i)}
@@ -96,19 +106,17 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
 
   const handleChange = (id, val) => {
     onParamChange(id, val);
-    // כפתור general — מבהב את כל הבון
     if (isGeneral && onBonFlash) onBonFlash();
   };
 
   return (
     <>
       <div
-        className="ctx-pr"
+        className="ctx-pr" dir='rtl'
         style={{
-          marginRight: indent * 14,
+          marginRight: indent * 10,
           borderRight: indent > 0 ? '2px solid var(--ba)' : 'none',
           paddingRight: indent > 0 ? 10 : 0,
-          opacity: 1,
         }}
       >
         <div className="ctx-pr-lbl">
@@ -116,7 +124,7 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
           <span style={{ fontWeight: 600 }}>{p.lbl}</span>
           {p.noImpl && (
             <span style={{
-              fontSize: 9, color: 'var(--ba)', opacity: 0.6,
+              fontSize: 9, color: 'var(--bm)', opacity: 0.6,
               background: 'rgba(0,0,0,0.08)', borderRadius: 3,
               padding: '1px 4px', marginRight: 4,
             }}>לא משפיע על התצוגה</span>
@@ -143,10 +151,11 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
               type="text"
               value={params[p.id] || ''}
               onChange={e => handleChange(p.id, e.target.value)}
+              className='input-white'
               placeholder="הזן ערך"
               style={{ width: 130, fontSize: 11, padding: '3px 7px',
                        border: '1.5px solid var(--ba)', borderRadius: 5,
-                       background: 'var(--bm)', color: 'var(--bd)' }}
+                       background: 'white', color: 'var(--bd)' }}
             />
           ) : (
             <label className="tg">
@@ -178,15 +187,11 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
   );
 }
 
-// ── Main panel ────────────────────────────────────────────────────────────
-// onBonFlash — callback שמבהב את כל הבון (מועבר מ-App כשzone==='general')
-export default function CtxPanel({ zone, onClose, params, onParamChange, template, onBonFlash }) {
+// ── Zone param body ────────────────────────────────────────────────────────
+function ZoneParamBody({ def, params, onParamChange, template, isGeneral, onBonFlash }) {
   const [openCats, setOpenCats] = useState({});
   const [query, setQuery]       = useState('');
   const [activeFilter, setFilter] = useState(null);
-
-  const def = zone ? CTX_ZONES[zone] : null;
-  const isGeneral = zone === GENERAL_ZONE;
 
   const isSearching = query.trim() || activeFilter;
 
@@ -201,7 +206,7 @@ export default function CtxPanel({ zone, onClose, params, onParamChange, templat
     return true;
   };
 
-  const filteredCats = def ? Object.fromEntries(
+  const filteredCats = Object.fromEntries(
     Object.entries(def.cats).map(([catName, catParams]) => [
       catName,
       catParams.filter(p =>
@@ -210,26 +215,14 @@ export default function CtxPanel({ zone, onClose, params, onParamChange, templat
         (!isSearching || matchesSearch(p))
       ),
     ]).filter(([, catParams]) => catParams.length > 0)
-  ) : {};
+  );
 
-  // when searching, expand all visible cats
   const effectiveOpenCats = isSearching
     ? Object.fromEntries(Object.keys(filteredCats).map(k => [k, true]))
     : openCats;
 
-  if (!def) return null;
-
   return (
-    <div className={`ctx-panel${zone ? ' open' : ''}`}>
-      <div className="ctx-panel-hdr" style={isGeneral ? { background: 'var(--bm)', borderBottom: '2px solid var(--ba)' } : {}}>
-        <button className="ctx-panel-back" onClick={onClose}>✕</button>
-        <span className="ctx-panel-title">
-
-          {def.title}
-        </span>
-      </div>
-
-
+    <>
       <div style={{ padding: '8px 12px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
         <ParamSearch
           query={query}
@@ -238,7 +231,6 @@ export default function CtxPanel({ zone, onClose, params, onParamChange, templat
           setFilter={setFilter}
         />
       </div>
-
       <div className="ctx-panel-body">
         {Object.entries(filteredCats).map(([catName, catParams]) => (
           <div key={catName}>
@@ -266,6 +258,211 @@ export default function CtxPanel({ zone, onClose, params, onParamChange, templat
           </div>
         ))}
       </div>
+    </>
+  );
+}
+
+// ── All params view ────────────────────────────────────────────────────────
+function AllParamsView({ params, onParamChange, paramGroups }) {
+  const [collapsed, setCollapsed] = useState(
+    Object.fromEntries((paramGroups || []).map(g => [g.id, true]))
+  );
+
+  const toggle = (id) => setCollapsed(p => ({ ...p, [id]: !p[id] }));
+
+  if (!paramGroups?.length) return (
+    <div style={{ padding: 24, color: 'var(--sub)', fontSize: 12, textAlign: 'center' }}>
+      טוען פרמטרים...
+    </div>
+  );
+
+  return (
+    <div className="ctx-panel-body">
+      {paramGroups.map(group => {
+        const activeCount = group.params.filter(p => params[p.id]).length;
+        const isCollapsed = collapsed[group.id] !== false;
+        return (
+          <div key={group.id} className={`pg${isCollapsed ? ' collapsed' : ''}`}>
+            <div className="pg-hdr" onClick={() => toggle(group.id)}>
+              <span className="pg-icon">{group.icon}</span>
+              <span className="pg-ttl">{group.label}</span>
+              {activeCount > 0 && (
+                <span className="pg-count">{activeCount}/{group.params.length}</span>
+              )}
+              <span className="pg-arr">▼</span>
+            </div>
+            {!isCollapsed && (
+              <div className="pg-body">
+                {group.params.map(p => (
+                  <div key={p.id} className="pr">
+                    <div className="pr-l" style={{ paddingLeft: '12px' }}>
+                      <div className="pr-lbl">{p.lbl}</div>
+                      {p.sub && <div className="pr-sub">{p.sub}</div>}
+                    </div>
+                    <label className="tg">
+                      <input
+                        type="checkbox"
+                        checked={!!params[p.id]}
+                        onChange={e => onParamChange(p.id, e.target.checked)}
+                      />
+                      <div className="tg-tr" />
+                      <div className="tg-th" />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Zone Picker ───────────────────────────────────────────────────────────
+function ZonePicker({ onSelect }) {
+  return (
+    <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{
+        padding: '14px 16px 8px', fontSize: 11, color: 'var(--sub)',
+        fontWeight: 600, direction: 'rtl', textTransform: 'uppercase', letterSpacing: '.5px',
+      }}>
+        בחר אזור לעריכה
+      </div>
+      {ZONE_PICKER_OPTIONS.map(opt => (
+        <button
+          key={opt.id}
+          onClick={() => onSelect(opt.id)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 16px', background: 'none', border: 'none',
+            borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer',
+            direction: 'rtl', textAlign: 'right', transition: 'background .12s',
+            fontFamily: 'var(--sans)',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(29,158,117,0.06)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        >
+          <span style={{ fontSize: 20, flexShrink: 0 }}>{opt.icon}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bd)', flex: 1 }}>
+            {opt.label}
+          </span>
+          <span style={{ fontSize: 18, color: 'var(--sub)', opacity: .4 }}>›</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Back button ───────────────────────────────────────────────────────────
+function BackBtn({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title="חזור"
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        color: 'var(--ba)', fontSize: 22, lineHeight: 1,
+        padding: '0 2px 0 6px', display: 'flex', alignItems: 'center',
+        flexShrink: 0,
+      }}
+    >
+      ‹
+    </button>
+  );
+}
+
+// ── Main panel ────────────────────────────────────────────────────────────
+export default function CtxPanel({
+  zone,           // זון מ-ZoneButtons (header/items/footer/general/null)
+  onClose,        // סגור את הפאנל לגמרי
+  params,
+  onParamChange,
+  template,
+  onBonFlash,     // אפקט הבהוב על כל הבון (general בלבד)
+  paramGroups,    // עבור "כל הפרמטרים"
+  showPicker,     // אם true — נפתח מ-settingsPanel עם ZonePicker
+}) {
+  // innerZone — הזון שנבחר בתוך ה-picker
+  const [innerZone, setInnerZone] = useState(null);
+
+  const effectiveZone = showPicker ? innerZone : zone;
+  const isPickerMode  = showPicker && !innerZone;
+  const isGeneral     = effectiveZone === GENERAL_ZONE;
+  const isAll         = effectiveZone === '__all__';
+  const def           = (effectiveZone && !isAll) ? CTX_ZONES[effectiveZone] : null;
+
+  const panelTitle = isPickerMode
+    ? 'הוספת פרמטרים'
+    : isAll
+      ? 'כל הפרמטרים'
+      : def?.title || '';
+
+  const handleBack = () => {
+    if (showPicker && innerZone) {
+      setInnerZone(null); // חזרה ל-picker
+    } else {
+      onClose();
+    }
+  };
+
+  // כפתור חזרה: ב-picker mode — רק כשבפנים; במצב רגיל — תמיד
+  const showBack = showPicker ? !!innerZone : !!zone;
+
+  const isOpen = !!(zone || showPicker);
+
+  return (
+    <div className={`ctx-panel${isOpen ? ' open' : ''}`}>
+
+      {/* ── Header ── */}
+      <div
+        className="ctx-panel-hdr" dir='rtl'
+        style={isGeneral ? { background: 'var(--bd)' } : {}}
+      >
+        
+        <button className="ctx-panel-back" onClick={onClose}>✕</button>
+        <span className="ctx-panel-title">{panelTitle}</span>
+        {showBack && <BackBtn onClick={handleBack} />} 
+      </div>
+
+      {/* ── Zone Picker ── */}
+      {isPickerMode && (
+        <ZonePicker onSelect={id => setInnerZone(id)} />
+      )}
+
+      {/* ── All Params ── */}
+      {!isPickerMode && isAll && (
+        <AllParamsView
+          params={params}
+          onParamChange={onParamChange}
+          paramGroups={paramGroups}
+        />
+      )}
+
+      {/* ── Specific Zone ── */}
+      {!isPickerMode && !isAll && def && (
+        <>
+          {isGeneral && (
+            <div style={{
+              padding: '7px 14px',
+              background: 'rgba(29,158,117,0.08)',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.18)',
+              fontSize: 11, color: 'var(--bm)', direction: 'rtl',
+              lineHeight: 1.5, flexShrink: 0,
+            }}>
+              הגדרות אלו משפיעות על <strong>כל הבון</strong>.
+            </div>
+          )}
+          <ZoneParamBody
+            def={def}
+            params={params}
+            onParamChange={onParamChange}
+            template={template}
+            isGeneral={isGeneral}
+            onBonFlash={onBonFlash}
+          />
+        </>
+      )}
     </div>
   );
 }

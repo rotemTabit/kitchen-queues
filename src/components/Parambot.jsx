@@ -887,7 +887,7 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
     },
     header: {
       display:'flex', alignItems:'center', justifyContent:'space-between',
-      padding:'6px 16px', background:'var(--ba)', flexShrink:0,
+      padding:'13px 16px', background:'var(--ba)', flexShrink:0,
     },
     messages: {
       flex:1, overflowY:'auto', padding:'16px 14px',

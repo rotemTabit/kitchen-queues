@@ -110,9 +110,10 @@ export function useMenu() {
 }
 
 // ── Bons ──────────────────────────────────────────────────
-export function useBons() {
+export function useBons(refreshKey = 0) {
   const { data, loading, error } = useQuery(() =>
-    supabase.from('bons').select('*, templates(key,name), printers(name,ip)').order('created_at', { ascending: false })
+    supabase.from('bons').select('*').order('created_at', { ascending: false }),
+    [refreshKey]
   );
   return { bons: data || [], loading, error };
 }

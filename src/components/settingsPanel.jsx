@@ -3,7 +3,8 @@ import { MonitorPlay, Merge, ListChecks, Printer, Copy, Trash2, Plus, Minus, Set
 import PrinterPicker from "./PrinterPicker";
 import MultiSelect from "./multiSelect";
 import ParamsPanel from "./paramsPanel";
-import { useTemplates, usePrinters, useParamGroups, useCategoryTree } from "../hooks/useSupabase";
+import { useTemplates, usePrinters, useParamGroups, useCategoryTree, useWorkflowProfiles, useMenuViews } from "../hooks/useSupabase";
+import { CTX_ZONES } from '../data/bonConfig';
 import ParamBot from "./Parambot";
 import TreeSelect from "./TreeSelect";
 import ItemsModal from "./ItemsModal";
@@ -151,116 +152,192 @@ function TemplateReceipt({ template, bonName }) {
   );
 }
 
+// ── buildParamMeta — סריקת CTX_ZONES לקבלת label + zone לכל פרמטר ──────────
+const ZONE_LABELS = {
+  general: { label: 'כללי',         bg: '#f0fdf4', color: '#166534', border: '#bbf7d0' },
+  header:  { label: 'ראש הבון',     bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
+  items:   { label: 'פריטים',       bg: '#fdf4ff', color: '#7e22ce', border: '#e9d5ff' },
+  footer:  { label: 'תחתית הבון',   bg: '#fff7ed', color: '#c2410c', border: '#fed7aa' },
+};
+
+function buildParamMeta() {
+  const map = {};
+  Object.entries(CTX_ZONES).forEach(([zoneKey, zoneDef]) => {
+    Object.values(zoneDef.cats).forEach(catParams => {
+      catParams.forEach(p => {
+        map[p.id] = {
+          lbl:      p.lbl || p.id,
+          sub:      p.sub || null,
+          parentId: p.parentId || null,
+          zone:     zoneKey,
+          type:     p.type || 'bool',
+          virtual:  p.id.startsWith('__'),
+        };
+      });
+    });
+  });
+  return map;
+}
+
+const PARAM_META = buildParamMeta();
+
 // ── Active Params Tab ─────────────────────────────────────────────────────
 // מציג רק פרמטרים פעילים + כפתור "הוספת פרמטרים"
 function ActiveParamsTab({ params, onParamChange, paramGroups, onAddParam }) {
-  // פרמטרים פעילים: ערך true / מספר > 0 / מערך לא ריק
+  const wpProfiles = useWorkflowProfiles(); // לתצוגת UUID → label
+  const menuViews  = useMenuViews();
+
+  const resolveLabel = (paramId, val) => {
+    if (paramId === 'EXCLUDE_PROFILE_' || paramId === 'INCLUDE_PROFILE_') {
+      return wpProfiles.find(p => p.id === val)
+        ? `${wpProfiles.find(p => p.id === val).type_display_name} — ${wpProfiles.find(p => p.id === val).name}`
+        : val;
+    }
+    if (paramId === 'EXCLUDE_MENU_VIEW_') {
+      return menuViews.find(v => v.id === val)?.name || val;
+    }
+    return val;
+  };
+
   const isActive = (val) => {
     if (Array.isArray(val)) return val.length > 0;
     if (typeof val === 'number') return val > 0;
     return !!val;
   };
 
-  // בנה מפה מ-id לתיאור (lbl) מתוך paramGroups
-  const labelMap = {};
-  (paramGroups || []).forEach(g => {
-    g.params.forEach(p => { labelMap[p.id] = { lbl: p.lbl, sub: p.sub }; });
+  const activeEntries = Object.entries(params).filter(([k, v]) => {
+    if (NON_PARAM_KEYS.has(k)) return false;
+    if (!isActive(v)) return false;
+    const meta = PARAM_META[k];
+    if (meta?.virtual) return false;
+    return true;
   });
 
-  // פרמטרים פעילים (לא כולל מפתחות מיוחדים)
-  const activeEntries = Object.entries(params).filter(
-    ([k, v]) => !NON_PARAM_KEYS.has(k) && isActive(v)
-  );
+  const [undoEntry, setUndoEntry] = useState(null);
+  const undoTimer = useRef(null);
 
-  // פרמטרים "ממתינים למחיקה" — כבוי ע"י המשתמש אבל עדיין לא נשמר
-  const [pendingOff, setPendingOff] = useState(new Set());
-
-  const handleToggleOff = (id) => {
-    setPendingOff(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        // ביטול — החזר את הפרמטר
-        next.delete(id);
-      } else {
-        next.add(id);
-        onParamChange(id, false);
-      }
-      return next;
-    });
+  const handleRemove = (id, val) => {
+    onParamChange(id, false);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndoEntry({ id, val });
+    undoTimer.current = setTimeout(() => setUndoEntry(null), 5000);
   };
+
+  const handleUndo = () => {
+    if (!undoEntry) return;
+    onParamChange(undoEntry.id, undoEntry.val);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndoEntry(null);
+  };
+
+  const byZone = {};
+  activeEntries.forEach(([id, val]) => {
+    const meta = PARAM_META[id];
+    const zone = meta?.zone || 'items';
+    if (!byZone[zone]) byZone[zone] = [];
+    byZone[zone].push({ id, val, meta });
+  });
+
+  const zoneOrder = ['general', 'header', 'items', 'footer'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-
-      {/* רשימת פרמטרים פעילים */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {activeEntries.length === 0 && pendingOff.size === 0 ? (
-          <div style={{
-            padding: '32px 16px', textAlign: 'center', color: 'var(--sub)',
-            fontSize: 12, direction: 'rtl',
-          }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+        {activeEntries.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--sub)', fontSize: 12, direction: 'rtl' }}>
             <div style={{ fontSize: 28, marginBottom: 10 }}>🎛️</div>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>אין פרמטרים פעילים</div>
             <div style={{ opacity: .7 }}>לחץ על "הוספת פרמטרים" כדי להתחיל</div>
           </div>
         ) : (
-          <div>
-            {activeEntries.map(([id, val]) => {
-              const meta = labelMap[id] || { lbl: id, sub: null };
-              const isPendingOff = pendingOff.has(id);
-              return (
-                <div
-                  key={id}
-                  className="pr"
-                  style={{
-                    opacity: isPendingOff ? 0.45 : 1,
-                    transition: 'opacity .2s',
-                    background: isPendingOff ? '#fff5f5' : undefined,
-                  }}
-                >
-                  <div className="pr-l" style={{ flex: 1 }}>
-                    <div className="pr-lbl" style={{ textDecoration: isPendingOff ? 'line-through' : 'none' }}>
-                      {meta.lbl}
-                    </div>
-                    {isPendingOff && (
-                      <div style={{ fontSize: 10, color: '#e55', marginTop: 2 }}>
-                        יוסר בשמירה הבאה
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleToggleOff(id)}
-                    title={isPendingOff ? "בטל הסרה" : "כבה פרמטר"}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: isPendingOff ? 'var(--bm)' : '#e55',
-                      fontSize: 16, lineHeight: 1, padding: '2px 4px', flexShrink: 0,
-                    }}
-                  >
-                    {isPendingOff ? '↩' : '×'}
-                  </button>
+          zoneOrder.filter(z => byZone[z]).map(zoneKey => {
+            const zm = ZONE_LABELS[zoneKey] || ZONE_LABELS.items;
+            return (
+              <div key={zoneKey} style={{ marginBottom: 12 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: zm.color,
+                  background: zm.bg, border: `1px solid ${zm.border}`,
+                  borderRadius: 6, padding: '3px 10px', marginBottom: 6,
+                  direction: 'rtl', display: 'inline-block',
+                }}>
+                  {zm.label}
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {byZone[zoneKey].map(({ id, val, meta }) => {
+                    const activeChildren = Object.entries(params).filter(([cid, cv]) => {
+                      const cm = PARAM_META[cid];
+                      return cm?.parentId === id && isActive(cv) && !cm?.virtual;
+                    });
+                    return (
+                      <div key={id} style={{ background: '#fff', border: '1.5px solid var(--bdr)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', direction: 'rtl' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--bd)' }}>{meta?.lbl || id}</div>
+                            {typeof val === 'number' && val > 1 && (
+                              <div style={{ fontSize: 10, color: 'var(--sub)', marginTop: 1 }}>ערך: {val}</div>
+                            )}
+                            {Array.isArray(val) && val.length > 0 && (
+                              <div style={{ fontSize: 10, color: 'var(--sub)', marginTop: 1 }}>{val.join(' · ')}</div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleRemove(id, val)}
+                            style={{
+                              background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6,
+                              color: '#ef4444', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                              padding: '3px 8px', fontFamily: 'var(--sans)', flexShrink: 0,
+                            }}
+                          >הסר</button>
+                        </div>
+                        {activeChildren.map(([cid, cv]) => {
+                          const cm = PARAM_META[cid];
+                          return (
+                            <div key={cid} style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '5px 10px', direction: 'rtl',
+                              background: '#f8fafb', borderTop: '1px solid var(--bdr)', marginRight: 12,
+                            }}>
+                              <span style={{ fontSize: 10, color: 'var(--sub)', marginLeft: 2 }}>↳</span>
+                              <div style={{ flex: 1, fontSize: 11, color: 'var(--sub)' }}>{cm?.lbl || cid}</div>
+                              <button onClick={() => handleRemove(cid, cv)}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* כפתור הוספת פרמטרים */}
-      <div style={{
-        padding: '12px 14px',
-        borderTop: '1px solid var(--bdr)',
-        flexShrink: 0,
-      }}>
-        <button
-          onClick={onAddParam}
+      {undoEntry && (
+        <div style={{
+          margin: '0 12px 8px', padding: '8px 12px', borderRadius: 8,
+          background: 'var(--bd)', color: '#fff', direction: 'rtl',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontSize: 12, flexShrink: 0,
+        }}>
+          <span>הפרמטר הוסר</span>
+          <button onClick={handleUndo} style={{
+            background: 'var(--ba)', border: 'none', borderRadius: 5,
+            color: 'var(--bd)', fontSize: 11, fontWeight: 700,
+            cursor: 'pointer', padding: '3px 10px', fontFamily: 'var(--sans)',
+          }}>ביטול</button>
+        </div>
+      )}
+
+      <div style={{ padding: '10px 12px', borderTop: '1px solid var(--bdr)', flexShrink: 0 }}>
+        <button onClick={onAddParam}
           style={{
             width: '100%', padding: '10px 14px', borderRadius: 9,
             border: '1.5px solid var(--bm)', background: 'var(--bm)',
-            color: 'white', fontSize: 13, fontFamily: 'var(--sans)',
+            color: 'var(--ba)', fontSize: 13, fontFamily: 'var(--sans)',
             cursor: 'pointer', fontWeight: 700, direction: 'rtl',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'all .15s',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--bd)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--bm)'; }}
@@ -272,6 +349,7 @@ function ActiveParamsTab({ params, onParamChange, paramGroups, onAddParam }) {
     </div>
   );
 }
+
 
 // ── Main component ────────────────────────────────────────
 export default function SettingsPanel({
@@ -598,7 +676,9 @@ export default function SettingsPanel({
 
       <style>{`@keyframes tabot-spin{0%{transform:rotate(-18deg) scale(.95)}100%{transform:rotate(18deg) scale(1.1)}}`}</style>
 
-      {/* ── CtxPanel Picker (נפתח מכפתור "הוספת פרמטרים") ── */}
+      </div>{/* /content area */}
+
+      {/* ── CtxPanel Picker — מחוץ ל-content div, יושב ב-.right ישירות ── */}
       <CtxPanel
         zone={null}
         showPicker={showParamPicker}
@@ -608,7 +688,6 @@ export default function SettingsPanel({
         template={template}
         paramGroups={paramGroups}
       />
-      </div>{/* /content area */}
 
       {/* ── ParamBot overlay — מכסה הכל כולל הטופבר ── */}
       {showBot && (

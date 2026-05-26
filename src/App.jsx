@@ -80,7 +80,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .tsep{width:1px;height:16px;background:var(--bdr);margin:0 2px}
 .tsz{padding:2px 6px;border-radius:4px;font-size:11px;font-family:var(--mono);color:var(--sub);cursor:pointer;background:#f0f2f4}
 .tcl{padding:4px 7px;border-radius:5px;font-size:11px;cursor:pointer;color:#e53935;background:#fff0f0;border:none}
-.tabs{display:flex;border-bottom:1px solid var(--bdr);padding:2.5px 8px;flex-shrink:0;justify-content:center;}
+.tabs{display:flex;border-bottom:1px solid var(--bdr);padding:2.5px 8px;flex-shrink:0;justify-content:center;height:47px;box-sizing:border-box}
 .tab{padding:10px 14px;font-size:12px;font-family:var(--sans);color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 .tab:hover{color:var(--text)}
 .tab.on{color:var(--bm);border-bottom-color:var(--bm);font-weight:600}
@@ -208,7 +208,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .gconf-footer button{padding:6px 16px;border-radius:6px;font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:600}
 .gconf-footer .g-back{border:1px solid var(--bdr);background:#fff;color:var(--sub)}
 .gconf-footer .g-next{border:none;background:var(--bm);color:#fff}
-.ctx-panel{position:absolute;top:60px;left:0;width:100%;height:calc(100% - 50px);background:var(--bg);z-index:200;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.ctx-panel{position:absolute;top:55px;left:0;width:100%;height:calc(100% - 55px);background:var(--bg);z-index:200;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
 .ctx-panel.open{transform:translateX(0)}
 .ctx-panel-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--bd);color:#fff;flex-shrink:0}
 .ctx-panel-back{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;line-height:1;padding:2px 6px}
@@ -850,7 +850,7 @@ export default function App() {
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
                       <span style={{ fontSize:13, fontWeight:700, color:"var(--bd)", flex:1 }}>{b.name}</span>
                       {isCurrent && (
-                        <span style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"var(--bm)", color:"#fff", fontWeight:600 }}>פעיל</span>
+                        <span style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"var(--bm)", color:"#fff", fontWeight:600 }}>מוצג כעת</span>
                       )}
                     </div>
                     <div style={{ fontSize:11, color:"var(--sub)", display:"flex", gap:10 }}>

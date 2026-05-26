@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useWorkflowProfiles, useMenuViews } from '../hooks/useSupabase';
 import { CTX_ZONES } from '../data/bonConfig';
 
 // ── Param lookup ─────────────────────────────────────────────────────────
@@ -370,10 +371,10 @@ const FLOW = {
   restrictions: {
     q: 'איזה הגבלת הדפסה תרצה?',
     opts: [
-      { lbl: 'הוצא טווח שולחנות',    params: ['EXCLUDE_TABLES_'], end: true },
-      { lbl: 'הוצא פרופיל עבודה',    params: ['EXCLUDE_PROFILE_'], end: true },
-      { lbl: 'הצג רק פרופיל נבחר',   params: ['INCLUDE_PROFILE_'], end: true },
-      { lbl: 'הוצא תפריט תצוגה',     params: ['EXCLUDE_MENU_VIEW_'], end: true },
+      { lbl: 'הוצא טווח שולחנות',    action: '_setRange',   paramId: 'EXCLUDE_TABLES_' },
+      { lbl: 'הוצא פרופיל עבודה',    action: '_selectMulti', paramId: 'EXCLUDE_PROFILE_', src: 'workflow_profiles' },
+      { lbl: 'הצג רק פרופיל נבחר',   action: '_selectMulti', paramId: 'INCLUDE_PROFILE_', src: 'workflow_profiles' },
+      { lbl: 'הוצא תפריט תצוגה',     action: '_selectMulti', paramId: 'EXCLUDE_MENU_VIEW_', src: 'menu_views' },
     ],
   },
 };
@@ -510,6 +511,11 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
   const [currentCatId, setCurrentCatId] = useState(null);
   const [itemQuery, setItemQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
+  const [rangeFrom, setRangeFrom]         = useState('');
+  const [rangeTo, setRangeTo]             = useState('');
+  const [selectVal, setSelectVal]         = useState('');
+  const wpProfiles = useWorkflowProfiles();
+  const menuViews  = useMenuViews();
   const bottomRef               = useRef(null);
   const msgId                   = useRef(1);
   const typingRef               = useRef(null);
@@ -774,6 +780,36 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
         }]);
       }
 
+    } else if (opt.action === '_setRange') {
+      setRangeFrom(''); setRangeTo('');
+      pushStep('_rangeInput_' + opt.paramId);
+      botSay(`הזן טווח שולחנות להחרגה (לדוגמה: 101 עד 110):`, '_rangeInput');
+
+    } else if (opt.action === '_confirmRange') {
+      if (!rangeFrom || !rangeTo) { botSay('יש להזין גם מ- וגם עד-.', step); return; }
+      onParamChange(opt.paramId, `${rangeFrom}:${rangeTo}`);
+      botSay(`✓ טווח שולחנות ${rangeFrom}:${rangeTo} הוגדר.`, 'done_msg');
+      setDone(true);
+
+    } else if (opt.action === '_selectMulti') {
+      setSelectVal('');
+      pushStep('_multiSelect_' + opt.paramId + '_' + opt.src);
+      const label = opt.src === 'workflow_profiles' ? 'פרופיל עבודה' : 'תצוגה';
+      botSay(`בחר ${label} להוספה:`, '_multiSelect');
+
+    } else if (opt.action === '_confirmSelect') {
+      if (!selectVal) { botSay('לא נבחר ערך.', step); return; }
+      const cur = params[opt.paramId] || [];
+      if (!cur.includes(selectVal)) {
+        onParamChange(opt.paramId, [...cur, selectVal]);
+      }
+      const src = step.split('_').pop();
+      const label = src === 'workflow_profiles'
+        ? wpProfiles.find(p => p.id === selectVal)?.name || selectVal
+        : menuViews.find(v => v.id === selectVal)?.name || selectVal;
+      botSay(`✓ "${label}" נוסף.`, 'done_msg');
+      setDone(true);
+
     } else if (opt.end && opt.params) {
       botSay('הנה הפרמטרים הכי מתאימים לצרכים שלך:', 'reco', opt.params);
 
@@ -887,7 +923,7 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
     },
     header: {
       display:'flex', alignItems:'center', justifyContent:'space-between',
-      padding:'13px 16px', background:'var(--ba)', flexShrink:0,
+      padding:'0 16px', height:'55px', background:'var(--ba)', flexShrink:0, boxSizing:'border-box',
     },
     messages: {
       flex:1, overflowY:'auto', padding:'16px 14px',
@@ -1038,6 +1074,62 @@ export default function ParamBot({ params, onParamChange, onClose, template, set
               }} onClick={onClose}>סגור</span>
             </div>
           );
+
+          // ── Range input UI ──
+          if (step.startsWith('_rangeInput') && !done) {
+            const paramId = step.replace('_rangeInput_', '');
+            return (
+              <div style={S.opts}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, direction:'rtl' }}>
+                  <input type="number" placeholder="מ-" value={rangeFrom}
+                    onChange={e => setRangeFrom(e.target.value)}
+                    style={{ flex:1, padding:'7px 10px', borderRadius:7, border:'1.5px solid var(--bdr)',
+                             fontSize:13, fontFamily:'var(--sans)', textAlign:'center' }} />
+                  <span style={{ color:'var(--sub)' }}>—</span>
+                  <input type="number" placeholder="עד-" value={rangeTo}
+                    onChange={e => setRangeTo(e.target.value)}
+                    style={{ flex:1, padding:'7px 10px', borderRadius:7, border:'1.5px solid var(--bdr)',
+                             fontSize:13, fontFamily:'var(--sans)', textAlign:'center' }} />
+                </div>
+                {rangeFrom && rangeTo && (
+                  <button style={S.confirmBtn}
+                    onClick={() => handleOpt({ action:'_confirmRange', paramId })}>
+                    אשר טווח {rangeFrom}:{rangeTo} ✓
+                  </button>
+                )}
+                {donePills}
+              </div>
+            );
+          }
+
+          // ── Multi select UI (profiles / views) ──
+          if (step.startsWith('_multiSelect') && !done) {
+            const parts  = step.split('_').filter(Boolean);
+            // _multiSelect_PARAM_ID_src
+            const src    = parts[parts.length - 1];
+            const paramId = parts.slice(1, parts.length - 1).join('_');
+            const opts2  = src === 'workflow_profiles'
+              ? wpProfiles.map(p => ({ value: p.id, label: `${p.type_display_name} — ${p.name}` }))
+              : menuViews.map(v => ({ value: v.id, label: v.name }));
+            return (
+              <div style={S.opts}>
+                <select value={selectVal} onChange={e => setSelectVal(e.target.value)}
+                  style={{ width:'100%', padding:'8px 10px', borderRadius:7, border:'1.5px solid var(--bdr)',
+                           fontSize:12, fontFamily:'var(--sans)', direction:'rtl', marginBottom:8,
+                           background:'#fff', color: selectVal ? 'var(--text)' : '#b0bec5' }}>
+                  <option value="">— בחר —</option>
+                  {opts2.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {selectVal && (
+                  <button style={S.confirmBtn}
+                    onClick={() => handleOpt({ action:'_confirmSelect', paramId })}>
+                    הוסף ✓
+                  </button>
+                )}
+                {donePills}
+              </div>
+            );
+          }
 
           // ── Item search UI ──
           if (step === '_addItems' && !done) {

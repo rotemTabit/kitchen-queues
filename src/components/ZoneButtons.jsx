@@ -51,15 +51,24 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
     };
 
     if (bonFitsInContainer) {
+      // positions לפי תוכן אמיתי — אם ריק, מיקום קבוע לפי שליש הבון
+      const bonH = pRect.bottom - pRect.top;
+      const fallbacks = {
+        header: pRect.top  + bonH * 0.15,
+        items:  pRect.top  + bonH * 0.5,
+        footer: pRect.top  + bonH * 0.85,
+      };
       Object.entries(buckets).forEach(([zone, els]) => {
-        if (!els.length) return;
-        const firstRect = els[0].getBoundingClientRect();
-        const lastRect  = els[els.length - 1].getBoundingClientRect();
         let y;
-        if (zone === 'header')      y = firstRect.top + firstRect.height / 2;
-        else if (zone === 'footer') y = lastRect.top  + lastRect.height  / 2;
-        else                        y = (firstRect.top + lastRect.bottom) / 2;
-
+        if (els.length) {
+          const firstRect = els[0].getBoundingClientRect();
+          const lastRect  = els[els.length - 1].getBoundingClientRect();
+          if (zone === 'header')      y = firstRect.top + firstRect.height / 2;
+          else if (zone === 'footer') y = lastRect.top  + lastRect.height  / 2;
+          else                        y = (firstRect.top + lastRect.bottom) / 2;
+        } else {
+          y = fallbacks[zone];
+        }
         y = Math.max(pRect.top + 14, Math.min(pRect.bottom - 14, y));
         newPos[zone] = { x: leftBtnX, y, side: 'left' };
       });
@@ -68,9 +77,9 @@ export default function ZoneButtons({ bonPaperRef, containerRef, ctxZone, onOpen
       const bottom = cRect.bottom - 24;
       const mid    = (cRect.top + cRect.bottom) / 2;
 
-      if (buckets.header.length) newPos.header = { x: leftBtnX, y: top,    side: 'left' };
-      if (buckets.items.length)  newPos.items  = { x: leftBtnX, y: mid,    side: 'left' };
-      if (buckets.footer.length) newPos.footer = { x: leftBtnX, y: bottom, side: 'left' };
+      newPos.header = { x: leftBtnX, y: top,    side: 'left' };
+      newPos.items  = { x: leftBtnX, y: mid,    side: 'left' };
+      newPos.footer = { x: leftBtnX, y: bottom, side: 'left' };
     }
 
     setPositions(newPos);

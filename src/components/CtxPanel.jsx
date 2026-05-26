@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CTX_ZONES } from '../data/bonConfig';
 import ParamSearch, { FILTER_IDS } from './Paramsearch';
 import {
@@ -33,13 +33,13 @@ function useSelectOpts(src) {
   const igGroups   = useIgGroups();
 
   switch (src) {
-    case 'tags_item':         return tagsItem.map(t => t.tag_name);
-    case 'tags_course':       return tagsCourse.map(t => t.tag_name);
-    case 'workflow_profiles': return profiles.map(p => `${p.type_display_name} — ${p.name}`);
-    case 'menu_views':        return views.map(v => v.name);
-    case 'modifier_groups':   return modGroups;
-    case 'ig_groups':         return igGroups;
-    default:                  return src || [];
+    case 'tags_item':         return tagsItem.map(t => ({ value: t.id || t.tag_name, label: t.tag_name }));
+    case 'tags_course':       return tagsCourse.map(t => ({ value: t.id || t.tag_name, label: t.tag_name }));
+    case 'workflow_profiles': return profiles.map(p => ({ value: p.id, label: `${p.type_display_name} — ${p.name}` }));
+    case 'menu_views':        return views.map(v => ({ value: v.id, label: v.name }));
+    case 'modifier_groups':   return modGroups.map(g => ({ value: g, label: g }));
+    case 'ig_groups':         return igGroups.map(g => ({ value: g, label: g }));
+    default:                  return (src || []).map(s => typeof s === 'string' ? { value: s, label: s } : s);
   }
 }
 
@@ -49,9 +49,18 @@ function MultiParam({ p, params, onParamChange }) {
   const dynamicOpts = useSelectOpts(p.selectSrc);
   const opts        = dynamicOpts.length > 0 ? dynamicOpts : (p.selectOpts || []);
 
-  const add    = () => onParamChange(p.id, [...instances, opts[0] || '']);
+  const firstVal = opts.length > 0 ? (opts[0]?.value ?? opts[0]) : '';
+  const add    = () => onParamChange(p.id, [...instances, firstVal]);
   const remove = (i) => onParamChange(p.id, instances.filter((_, idx) => idx !== i));
   const change = (i, val) => onParamChange(p.id, instances.map((v, idx) => idx === i ? val : v));
+
+useEffect(() => {
+  if (!opts.length || !instances.length) return;
+  const hasEmpty = instances.some(v => !v);
+  if (hasEmpty) {
+    onParamChange(p.id, instances.map(v => v || firstVal));
+  }
+}, [opts.length]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
@@ -65,13 +74,16 @@ function MultiParam({ p, params, onParamChange }) {
                        border: '1px solid var(--ba)', borderRadius: 5,
                        background: 'var(--bm)', color: 'var(--bd)', direction: 'rtl' }}
             >
-              {opts.map(o => <option key={o} value={o}>{o}</option>)}
+              {opts.map(o => {
+                const v = o?.value ?? o;
+                const l = o?.label ?? o;
+                return <option key={v} value={v}>{l}</option>;
+              })}
             </select>
           ) : (
             <input
               type="text" value={val}
               onChange={e => change(i, e.target.value)}
-              className='input-white'
               placeholder="הזן ערך"
               style={{ flex: 1, fontSize: 11, padding: '3px 6px',
                        border: '1px solid var(--ba)', borderRadius: 5,
@@ -112,19 +124,19 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
   return (
     <>
       <div
-        className="ctx-pr" dir='rtl'
+        className="ctx-pr"
         style={{
-          marginRight: indent * 10,
+          marginRight: indent * 14,
           borderRight: indent > 0 ? '2px solid var(--ba)' : 'none',
           paddingRight: indent > 0 ? 10 : 0,
         }}
       >
         <div className="ctx-pr-lbl">
-          {indent > 0 && <span style={{ color: 'var(--ba)', opacity: 0.5, marginLeft: 4, fontSize: 10 }}>↳</span>}
+          {indent > 0 && <span style={{ color: 'var(--b)', opacity: 0.5, marginLeft: 4, fontSize: 10 }}>↳</span>}
           <span style={{ fontWeight: 600 }}>{p.lbl}</span>
           {p.noImpl && (
             <span style={{
-              fontSize: 9, color: 'var(--bm)', opacity: 0.6,
+              fontSize: 9, color: 'var(--bd)', opacity: 0.6,
               background: 'rgba(0,0,0,0.08)', borderRadius: 3,
               padding: '1px 4px', marginRight: 4,
             }}>לא משפיע על התצוגה</span>
@@ -133,7 +145,33 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
         </div>
 
         <div style={{ flexShrink: 0 }}>
-          {p.type === 'numeric' ? (
+          {p.type === 'range' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="number" min={1} placeholder="מ-"
+                value={(params[p.id] || '').toString().split(':')[0] || ''}
+                onChange={e => {
+                  const to = (params[p.id] || '').toString().split(':')[1] || '';
+                  handleChange(p.id, e.target.value ? `${e.target.value}:${to}` : '');
+                }}
+                style={{ width: 52, textAlign: 'center', border: '1.5px solid var(--ba)',
+                         borderRadius: 6, padding: '3px 4px', background: 'white',
+                         color: 'var(--bd)', fontFamily: 'var(--mono)', fontSize: 12 }}
+              />
+              <span style={{ color: 'var(--ba)', fontSize: 11 }}>:</span>
+              <input
+                type="number" min={1} placeholder="עד-"
+                value={(params[p.id] || '').toString().split(':')[1] || ''}
+                onChange={e => {
+                  const from = (params[p.id] || '').toString().split(':')[0] || '';
+                  handleChange(p.id, e.target.value ? `${from}:${e.target.value}` : '');
+                }}
+                style={{ width: 52, textAlign: 'center', border: '1.5px solid var(--ba)',
+                         borderRadius: 6, padding: '3px 4px', background: 'white',
+                         color: 'var(--bd)', fontFamily: 'var(--mono)', fontSize: 12 }}
+              />
+            </div>
+          ) : p.type === 'numeric' ? (
             <input
               type="number" min={1} max={10}
               value={params[p.id] || 0}
@@ -151,7 +189,6 @@ function ParamRow({ p, params, onParamChange, zone, indent = 0, isGeneral = fals
               type="text"
               value={params[p.id] || ''}
               onChange={e => handleChange(p.id, e.target.value)}
-              className='input-white'
               placeholder="הזן ערך"
               style={{ width: 130, fontSize: 11, padding: '3px 7px',
                        border: '1.5px solid var(--ba)', borderRadius: 5,
@@ -412,17 +449,16 @@ export default function CtxPanel({
   const isOpen = !!(zone || showPicker);
 
   return (
-    <div className={`ctx-panel${isOpen ? ' open' : ''}`}>
+    <div className={`ctx-panel${isOpen ? ' open' : ''}`} dir='rtl'>
 
       {/* ── Header ── */}
       <div
-        className="ctx-panel-hdr" dir='rtl'
-        style={isGeneral ? { background: 'var(--bd)' } : {}}
+        className="ctx-panel-hdr"
+        style={isGeneral ? { background: 'var(--bm)', borderBottom: '2px solid var(--ba)' } : {}}
       >
-        
+        {showBack && <BackBtn onClick={handleBack} />}
         <button className="ctx-panel-back" onClick={onClose}>✕</button>
         <span className="ctx-panel-title">{panelTitle}</span>
-        {showBack && <BackBtn onClick={handleBack} />} 
       </div>
 
       {/* ── Zone Picker ── */}
@@ -446,8 +482,8 @@ export default function CtxPanel({
             <div style={{
               padding: '7px 14px',
               background: 'rgba(29,158,117,0.08)',
-              borderBottom: '1px solid rgba(0, 0, 0, 0.18)',
-              fontSize: 11, color: 'var(--bm)', direction: 'rtl',
+              borderBottom: '1px solid rgba(29,158,117,0.18)',
+              fontSize: 11, color: 'var(--ba)', direction: 'rtl',
               lineHeight: 1.5, flexShrink: 0,
             }}>
               הגדרות אלו משפיעות על <strong>כל הבון</strong>.

@@ -8,6 +8,16 @@ const STRUCTURAL_KEYS = new Set([
   'IGNORE_ALL_MODIFIERS',
 ]);
 
+// ── Inverted params: ב-UI דולק = ברירת מחדל = לא נשמר לשרת ────────────
+// כשהם false ב-UI (כיבה המשתמש) → נשלח כ-true לשרת (=OMIT/HIDE)
+const INVERTED_PARAMS = new Set([
+  'OMIT_ORDER_TAGS', 'OMIT_CUSTOMER_DETAILS', 'OMIT_ORDERRER_TEL', 'OMIT_OTC_TYPE',
+  'OMIT_DINER_NAME', 'NO_COURSE_NAME', 'OMIT_ITEM_REMARKS_4_EXTERNAL_ORDER', 'OMIT_BON_TAGS',
+  'OMIT_BOTTOM_ORDERER_DETAILS',
+  'HIDE_BEV_ITEMS_IF_BEVERAGE_SUMMARY', 'HIDE_SAUCE_ITEMS_IF_SAUCE_SUMMARY',
+  'HIDE_ITEMS_INCLUDED_IN_SUMMARY',
+]);
+
 /**
  * buildPayload — ממיר את ה-state של App לפורמט שורת Supabase
  *
@@ -39,7 +49,17 @@ export function buildPayload({
   // פרמטרים "אמיתיים" — כל מה שלא structural
   const activeParams = {};
   Object.entries(params).forEach(([k, v]) => {
-    if (!STRUCTURAL_KEYS.has(k)) activeParams[k] = v;
+    if (STRUCTURAL_KEYS.has(k)) return;
+
+    if (INVERTED_PARAMS.has(k)) {
+      // true ב-UI = הצג = ברירת מחדל = לא שולחים
+      // false ב-UI = הסתר = שולחים כ-true (OMIT/HIDE)
+      if (v === false || v === 0) activeParams[k] = true;
+    } else {
+      if (v !== undefined && v !== null && v !== false && v !== 0) {
+        activeParams[k] = v;
+      }
+    }
   });
 
   return {

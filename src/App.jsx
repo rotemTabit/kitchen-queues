@@ -11,6 +11,15 @@ import { useMenu, useMenuWithGroups, useBon, useBons, saveBon, deleteBon } from 
 import { buildElements } from "./utils/buildElements";
 import { buildPayload } from "./utils/buildPayload";
 
+// inverted params — ברירת מחדל true ב-UI (דולק)
+const INVERTED_PARAMS = new Set(['OMIT_ORDER_TAGS', 'OMIT_CUSTOMER_DETAILS', 'OMIT_ORDERRER_TEL', 'OMIT_OTC_TYPE', 'OMIT_DINER_NAME', 'NO_COURSE_NAME', 'OMIT_ITEM_REMARKS_4_EXTERNAL_ORDER', 'OMIT_BON_TAGS', 'OMIT_BOTTOM_ORDERER_DETAILS', 'HIDE_BEV_ITEMS_IF_BEVERAGE_SUMMARY', 'HIDE_SAUCE_ITEMS_IF_SAUCE_SUMMARY', 'HIDE_ITEMS_INCLUDED_IN_SUMMARY']);
+
+function defaultParams() {
+  const d = {};
+  INVERTED_PARAMS.forEach(k => { d[k] = true; }); // דולקים כברירת מחדל
+  return d;
+}
+
 // ══════════════════════════════════════════════════════════
 // STYLES
 // ══════════════════════════════════════════════════════════
@@ -22,7 +31,7 @@ const CSS = `
   --bg:#F0FAF5;--bgpreview:#0F5853;
   --text:#1a2332;--sub:#5a6a7a;
   --bdr:rgba(0,0,0,0.09);--bdr2:rgba(11,68,64,0.25);
-  --mono:'Courier New',Courier,monospace;
+  --mono:'Courier New',Courier,'Arial Hebrew','David',Arial,monospace;
   --sans:'Assistant',-apple-system,sans-serif;
 }
 html,body{height:100%; width:100%; overflow:hidden}#root{height:100%;width:100%}
@@ -65,13 +74,10 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .chips-clear{padding:3px 8px;border-radius:20px;border:1px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;font-family:var(--sans)}
 .chips-clear:hover{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.4)}
 .rw{width:290px;position:relative}
-.rp{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04);border-radius:2px;font-family:'Courier New',Courier,monospace;font-size:11.5px;direction:rtl;min-height:80px;position:relative}
+.rp{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04);border-radius:2px;font-family:'Courier New',Courier,'Arial Hebrew','David',Arial,monospace;font-size:11.5px;direction:rtl;min-height:80px;position:relative}
 .rp::before,.rp::after{content:'';display:block;height:6px;background:repeating-linear-gradient(90deg,#fff 0 6px,#ddd 6px 8px)}
 .be{position:relative;cursor:pointer;transition:background .08s;direction:rtl;user-select:none;padding:1px 10px;color:#111}
-.be.clickable:hover{background:rgba(11,68,64,.05)}
 .be.sel{background:rgba(115,222,215,.25)!important;outline:1.5px solid var(--bm);outline-offset:-1px;z-index:1}
-.dh{opacity:0;position:absolute;left:4px;top:50%;transform:translateY(-50%);pointer-events:none;transition:opacity .15s;color:#aaa;font-size:10px}
-.be.sel .dh,.be.clickable:hover .dh{opacity:1}
 .stb{position:fixed;background:#fff;border:1.5px solid var(--bdr2);border-radius:9px;padding:5px 7px;display:none;gap:2px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.12);flex-wrap:wrap;max-width:320px;z-index:200}
 .stb.vis{display:flex}
 .tb{padding:4px 7px;border-radius:5px;border:1.5px solid transparent;background:#f8fafb;color:var(--sub);cursor:pointer;font-size:11px;font-family:var(--sans);transition:all .1s}
@@ -221,7 +227,7 @@ body{font-family:var(--sans);background:#fff;color:var(--text)}
 .ctx-acc-hdr.open .ctx-acc-arrow{transform:rotate(180deg)}
 .ctx-acc-body{display:none;border:1px solid #e0f0e8;border-top:none;border-radius:0 0 6px 6px;padding:4px 0;margin-bottom:6px}
 .ctx-acc-body.open{display:block}
-.ctx-pr{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #eef7f3}
+.ctx-pr{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;border-bottom:1px solid #eef7f3}
 .ctx-pr:last-child{border-bottom:none}
 .ctx-pr-lbl{flex:1;direction:rtl;text-align:right;font-size:12px;color:var(--text);font-weight:500}
 .ctx-pr-lbl small{display:block;font-size:10px;color:var(--sub);margin-top:1px}
@@ -252,6 +258,7 @@ export default function App() {
   const [selId, setSelId]                     = useState(null);
   const [dragId, setDragId]                   = useState(null);
   const [ctxZone, setCtxZone]                 = useState(null);
+  const [zoneFilter, setZoneFilter]           = useState([]);
   const [flashZone, setFlashZone]             = useState(null);
   const [flashCount, setFlashCount]           = useState(0);
   const flashTimer = useRef(null);
@@ -286,8 +293,10 @@ export default function App() {
     setElOrd(bon.element_order || []);
     setElSt(bon.element_overrides || {});
     // בנה params מהשדות הנפרדים + params jsonb
+    const dbParams = bon.params || {};
     const rebuilt = {
-      ...(bon.params || {}),
+      ...defaultParams(),  // ברירות מחדל (inverted = true)
+      ...dbParams,         // מה שנשמר בDB (override)
       PRINT_ALL_ITEMS: bon.print_all_items || false,
       INC_CATS:  bon.inc_cats  || [],
       EXC_CATS:  bon.exc_cats  || [],
@@ -297,6 +306,10 @@ export default function App() {
       AGGREGATE: bon.aggregate || false,
       IGNORE_ALL_MODIFIERS: bon.with_modifiers === false,
     };
+    // inverted שלא קיימים בDB → true (ברירת מחדל = הצג)
+    INVERTED_PARAMS.forEach(k => {
+      if (!(k in dbParams)) rebuilt[k] = true;
+    });
     setParams(rebuilt);
   }, []);
 
@@ -456,7 +469,15 @@ export default function App() {
   const isRestoreDisabled = !snapshot ||
     JSON.stringify({ bonName, template, params, orderTypes, sources }) === JSON.stringify(snapshot);
 
-  const elements = buildElements({ params, bonName, orderType, orderServiceType, previewItems: effectiveItems, template });
+  // המר inverted params לפני buildElements:
+  // true ב-UI (הצג) → false ל-buildElements (לא OMIT)
+  // false ב-UI (הסתר) → true ל-buildElements (=OMIT)
+  const paramsForBuild = { ...params };
+  INVERTED_PARAMS.forEach(k => {
+    paramsForBuild[k] = params[k] === false ? true : false;
+  });
+
+  const elements = buildElements({ params: paramsForBuild, bonName, orderType, orderServiceType, previewItems: effectiveItems, template });
 
   const sorted = elOrd.length
     ? [...elements].sort((a, b) => {
@@ -484,6 +505,14 @@ export default function App() {
       return next;
     });
   }, [elements.map(e => e.id).join(",")]);
+
+  // ── Zone open — עובר לטאב פרמטרים עם פילטור ──
+  const handleZoneOpen = (zone) => {
+    setZoneFilter([zone]);
+    setParamsTabActive(false);
+    requestAnimationFrame(() => setParamsTabActive(true));
+  };
+  const [paramsTabActive, setParamsTabActive] = useState(false);
 
   // ── Params ──
   const onParamChange = (id, val) => {
@@ -713,21 +742,35 @@ export default function App() {
 
             <div className="rw">
               <div className="rp" ref={bonPaperRef}>
-                {sorted.map(el => (
-                  <BonElement
-                    key={el.id}
-                    el={el}
-                    override={elSt[el.id] || {}}
-                    selected={selId === el.id}
-                    onSelect={handleSelect}
-                    onDragStart={setDragId}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(el.id, e)}
-                    onDragEnd={() => setDragId(null)}
-                    flash={flashZone === '__all__' || flashZone === el.zone}
-                    flashKey={(flashZone === '__all__' || flashZone === el.zone) ? flashCount : 0}
-                  />
-                ))}
+                {['header','items','footer'].map(zone => {
+                  const zoneEls = sorted.filter(el => (el.zone || 'items') === zone);
+                  if (!zoneEls.length) return null;
+                  const isFlashing = flashZone === '__all__' || flashZone === zone;
+                  return (
+                    <div
+                      key={zone}
+                      onClick={() => handleZoneOpen(zone)}
+                      style={{
+                        cursor: 'pointer',
+                        outline: isFlashing ? '2px solid rgba(29,158,117,0.6)' : '2px solid transparent',
+                        transition: 'outline 0.3s ease',
+                        borderRadius: 2,
+                      }}
+                      title={zone === 'header' ? 'ראש הבון' : zone === 'items' ? 'פריטים ומשנים' : 'תחתית הבון'}
+                    >
+                      {zoneEls.map(el => (
+                        <BonElement
+                          key={el.id}
+                          el={el}
+                          override={elSt[el.id] || {}}
+                          selected={false}
+                          flash={isFlashing}
+                          flashKey={isFlashing ? flashCount : 0}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -744,6 +787,12 @@ export default function App() {
             menu={menu}
             selectedPrinters={selectedPrinters} setSelectedPrinters={setSelectedPrinters}
             copies={copies}             setCopies={setCopies}
+            zoneFilter={zoneFilter}
+            onZoneFilterChange={setZoneFilter}
+            onBonFlash={() => { setFlashZone('__all__'); setFlashCount(c => c+1); setTimeout(() => setFlashZone(null), 600); }}
+            paramsTabActive={paramsTabActive}
+            onParamsTabActivated={() => setParamsTabActive(false)}
+            onZoneFilterClear={() => setZoneFilter([])}
           />
           {/* ── CTX PANEL ── */}
           <CtxPanel zone={ctxZone} onClose={() => setCtxZone(null)} params={params} onParamChange={onParamChange} template={template} onBonFlash={() => { setFlashZone('__all__'); setFlashCount(c => c+1); setTimeout(() => setFlashZone(null), 600); }} />
@@ -751,7 +800,7 @@ export default function App() {
       </div>
 
       {/* ── ZONE EDIT BUTTONS ── */}
-      <ZoneButtons bonPaperRef={bonPaperRef} containerRef={prevRef} ctxZone={ctxZone} onOpen={setCtxZone} />
+      <ZoneButtons bonPaperRef={bonPaperRef} containerRef={prevRef} ctxZone={zoneFilter.length === 1 ? zoneFilter[0] : null} onOpen={handleZoneOpen} />
 
       {/* ── FLOATING TOOLBAR ── */}
       <FloatingToolbar
@@ -850,7 +899,7 @@ export default function App() {
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
                       <span style={{ fontSize:13, fontWeight:700, color:"var(--bd)", flex:1 }}>{b.name}</span>
                       {isCurrent && (
-                        <span style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"var(--bm)", color:"#fff", fontWeight:600 }}>מוצג כעת</span>
+                        <span style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"var(--bm)", color:"#fff", fontWeight:600 }}>פעיל</span>
                       )}
                     </div>
                     <div style={{ fontSize:11, color:"var(--sub)", display:"flex", gap:10 }}>
@@ -876,6 +925,7 @@ export default function App() {
                   setElOrd([]);
                   setElSt({});
                   setBonId(null);
+                  setParams(defaultParams());
                   setIsDirty(false);
                   initialLoaded.current = true;
                   setBonPickerOpen(false);

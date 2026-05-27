@@ -3,6 +3,7 @@ import { MonitorPlay, Merge, ListChecks, Printer, Copy, Trash2, Plus, Minus, Set
 import PrinterPicker from "./PrinterPicker";
 import MultiSelect from "./multiSelect";
 import ParamsPanel from "./paramsPanel";
+import ParamsTab from "./ParamsTab";
 import { useTemplates, usePrinters, useParamGroups, useCategoryTree, useWorkflowProfiles, useMenuViews } from "../hooks/useSupabase";
 import { CTX_ZONES } from '../data/bonConfig';
 import ParamBot from "./Parambot";
@@ -361,13 +362,26 @@ export default function SettingsPanel({
   menu,
   selectedPrinters, setSelectedPrinters,
   copies, setCopies,
+  zoneFilter = [],
+  onZoneFilterChange,
+  onBonFlash,
+  onZoneFilterClear,
+  paramsTabActive = false,
+  onParamsTabActivated,
 }) {
   const [activeTab, setActiveTab]         = useState("bon");
+
+  // עבור לטאב פרמטרים כשZoneButtons לוחץ
+  useEffect(() => {
+    if (paramsTabActive) {
+      setActiveTab("params");
+      onParamsTabActivated?.();
+    }
+  }, [paramsTabActive]);
   const [showBot, setShowBot]             = useState(false);
   const [botKey, setBotKey]               = useState(0);
   const [itemsModalOpen, setItemsModalOpen] = useState(false);
   // ── Picker state ──
-  const [showParamPicker, setShowParamPicker] = useState(false);
 
   // ── Supabase data ──
   const { templates }     = useTemplates();
@@ -646,11 +660,13 @@ export default function SettingsPanel({
 
         {/* ── PARAMS ── */}
         {activeTab === "params" && (
-          <ActiveParamsTab
+          <ParamsTab
             params={params}
             onParamChange={onParamChange}
-            paramGroups={paramGroups}
-            onAddParam={() => setShowParamPicker(true)}
+            template={template}
+            initialZoneFilter={zoneFilter}
+            onZoneFilterChange={onZoneFilterChange}
+            onBonFlash={onBonFlash}
           />
         )}
       </div>
@@ -678,16 +694,7 @@ export default function SettingsPanel({
 
       </div>{/* /content area */}
 
-      {/* ── CtxPanel Picker — מחוץ ל-content div, יושב ב-.right ישירות ── */}
-      <CtxPanel
-        zone={null}
-        showPicker={showParamPicker}
-        onClose={() => setShowParamPicker(false)}
-        params={params}
-        onParamChange={onParamChange}
-        template={template}
-        paramGroups={paramGroups}
-      />
+
 
       {/* ── ParamBot overlay — מכסה הכל כולל הטופבר ── */}
       {showBot && (

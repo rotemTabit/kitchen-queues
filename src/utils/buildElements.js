@@ -29,9 +29,7 @@ function renderChoices(push, iid, item, choices, gp, filterGroups = []) {
   const modXL      = gp('MODIFIER_XL');
   const englishTxt = gp('ENGLISH_TEXT');
   const useNoWord  = gp('USE_REMOVE_AS_NO');
-  // FILTER_OFFER_MODIFIERS: if set, only show groups in the filter list
   const hasFilter  = Array.isArray(filterGroups) && filterGroups.length > 0;
-  // USE_MODIFIER_PRINT_NAME
   const useModPrint = gp('USE_MODIFIER_PRINT_NAME');
 
   const woPrefix  = useNoWord ? 'No ' : (englishTxt ? 'No ' : 'בלי ');
@@ -39,7 +37,6 @@ function renderChoices(push, iid, item, choices, gp, filterGroups = []) {
 
   const groups = item.groups || [];
   groups.forEach((g, gi) => {
-    // FILTER_OFFER_MODIFIERS_BY_MODIFER_GROUP_: skip groups not in filter
     if (hasFilter && !filterGroups.includes(g.name)) return;
     const sel = choices[g.id] || [];
 
@@ -97,7 +94,6 @@ function sortByCourse(items) {
   return [...items].sort((a, b) => {
     const ac = a.item?.course || null;
     const bc = b.item?.course || null;
-    // null course → goes after all real courses
     const ai = ac ? COURSE_ORDER.indexOf(ac) : 99;
     const bi = bc ? COURSE_ORDER.indexOf(bc) : 99;
     return (ai === -1 ? 98 : ai) - (bi === -1 ? 98 : bi);
@@ -144,8 +140,9 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
     for (let i = 0; i < n; i++)
       push({ id: `${pfx}_feed_${loc}_${i}`, text: '', align: 'center' });
   };
-
+  
   const pushOrderType = (pfx) => {
+    
     if (svcType === 'SEATED') return;
     const bold = !!gp('BOLD_TD_DETAILS') || !!gp('HIGHLIGHT_ORDER_TYPE');
     if (svcType === 'TA') {
@@ -218,7 +215,6 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
     if (gp('SUPPLIED_TIME_ON_TOP') && isTD)
       push({ id: `${pfx}supplied`, text: `אספקה לשעה ${DEMO.TO_BE_SUPPLIED_ON}`, align: 'center', bold: false, dbl: true });
 
-    // PRINT_DETAILED_DELIVERY_ETA
     if (gp('PRINT_DETAILED_DELIVERY_ETA') && isTD) {
       push({ id: `${pfx}deta1`, text: `| ${hm} |`,                align: 'center', bold: true, dbl: false });
       push({ id: `${pfx}deta2`, text: `| ${DEMO.DELIVERY_ETA} |`, align: 'center', bold: true, dbl: true });
@@ -255,6 +251,9 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
     const timeBig = gp('TIME_DBL_HIGHT');
     push({ id: `${pfx}info`, text: `סועדים: ${DEMO.NUMBER_OF_GUESTS}       ${hm}`, align: 'center', bold: !!timeBig, dbl: !!timeBig });
     push({ id: `${pfx}date`, text: `${dateStr}  -  ${DEMO.FIRED_BY}  -  הזמנה ${DEMO.ORDER_NO}`, align: 'center', bold: false });
+
+    // ── hdr_s נדחף כבר תחת zone='items' כדי שלחיצה עליו תפתח items ──
+    setZone('items');
     push({ id: `${pfx}hdr_s`, sep: true, solid: true });
   };
 
@@ -350,11 +349,9 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
       push({ id: `${pfx}ftaddr3`, text: `הערות: ${DEMO.ORDERER_ADDRESS_REMARKS}`, align: 'center' });
     }
 
-    // ORDERER_STREET_ON_FOOTER (street only)
     if (gp('ORDERER_STREET_ON_FOOTER') && svcType === 'DELIVERY' && !gp('OMIT_BOTTOM_ORDERER_DETAILS') && !gp('ORDERER_ADDRESS_ON_FOOTER'))
       push({ id: `${pfx}ft_street`, text: `${DEMO.ORDERER_ADDRESS_STREET} ${DEMO.ORDERER_ADDRESS_HOUSE}`, align: 'center', bold: false });
 
-    // ADD_ORDERER_REGION_NAME
     if (gp('ADD_ORDERER_REGION_NAME') && svcType === 'DELIVERY')
       push({ id: `${pfx}ft_region`, text: DEMO.ORDERER_ADDRESS_CITY, align: 'center', bold: false });
 
@@ -367,7 +364,6 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
     if (gp('ADD_TIME'))
       push({ id: `${pfx}ft_time`, text: hm, align: 'center', bold: false });
 
-    // ADD_BON_NAME_BOTTOM / BON_NAME_BOTTOM_HIGHLIGHT
     if (gp('ADD_BON_NAME_BOTTOM') && template === 'allday') {
       if (gp('BON_NAME_BOTTOM_HIGHLIGHT')) {
         push({ id: `${pfx}bname_hl1`, text: ` ${bonName || 'שם הבון'} `, align: 'center', bold: true, dbl: true, rev: true });
@@ -388,14 +384,12 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
     if (courseTag)
       push({ id: `${iid}_ctag`, text: '*** דחוף ***', align: 'center', bold: true, dbl: true });
 
-    // PRINT_ITEM_GROUP_NAME_: ig group name reversed above item
     if (gp('PRINT_ITEM_GROUP_NAME_') && item.groups?.some(g => g.type === 'ig')) {
       const igGroup = item.groups.find(g => g.type === 'ig');
       if (igGroup)
         push({ id: `${iid}_grpname`, text: ` ${igGroup.name} `, align: 'center', bold: true, dbl: false, rev: true });
     }
 
-    // name hierarchy: kitchen_name → offer_name (replace) → dish name
     let displayName = item.name;
     if (item.kitchen_name && !gp('IGNORE_ITEM_PRINT_NAME'))
       displayName = item.kitchen_name;
@@ -415,7 +409,6 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
 
     renderChoices(push, iid, item, choices, gp, Array.isArray(params?.FILTER_OFFER_MODIFIERS_BY_MODIFER_GROUP_) ? params.FILTER_OFFER_MODIFIERS_BY_MODIFER_GROUP_ : []);
 
-    // ADD_LONG_NAME_BELOW_ITEM
     if (gp('ADD_LONG_NAME_BELOW_ITEM') && item.long_name)
       push({ id: `${iid}_longname`, text: item.long_name, align: 'right', bold: false, dbl: false });
 
@@ -430,7 +423,6 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
   };
 
   const pushCourseHeader = (course, pfx) => {
-    // don't show course header for null-course items (grouped as 'Other' fallback)
     if (!gp('NO_COURSE_NAME') && course !== '__none__')
       push({ id: `${pfx}_ch`, text: COURSE_HE[course] || course, align: 'center', bold: true, underline: true });
   };
@@ -438,13 +430,10 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
   const groupByCourse = (itemsList) => {
     const map = {};
     itemsList.forEach(pi => {
-      // null/undefined course → '__none__' (no header shown)
-      // real 'Other' course → shown as 'אחר'
       const c = pi.item?.course || '__none__';
       if (!map[c]) map[c] = [];
       map[c].push(pi);
     });
-    // order: real courses first, then __none__ at end
     const ordered = [...COURSE_ORDER, '__none__'];
     return ordered.filter(c => map[c]).map(c => ({ course: c, items: map[c] }));
   };
@@ -468,7 +457,6 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
       push({ id: `${pfx}plate`, text: `צלחת ${pi + 1}`, align: 'center', bold: true, dbl: true });
       push({ id: `${pfx}sep1`,  sep: true, thin: true });
       plate.forEach((item_pi, ii) => {
-        // PRINT_CONDENSE_FORMAT: single height items
         pushItem(item_pi, `pd${pi}_${ii}`, { bold: false, dbl: !gp('PRINT_CONDENSE_FORMAT'), dinerNo: pi + 1 });
       });
       push({ id: `${pfx}sep2`, sep: true, thin: true });
@@ -543,10 +531,7 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
         push({ id: `${iid}_sep`, sep: true, thin: true });
         const nameCol = pi.item.name.padEnd(20, ' ').slice(0, 20);
         const qtyCol  = String(pi.qty).padStart(2, ' ');
-        // NORMAL_ITEM_LINE: qty on right instead of left
-        const lineText = gp('NORMAL_ITEM_LINE')
-          ? `${nameCol} ${qtyCol}`   // qty right (same in this monospace display)
-          : `${nameCol} ${qtyCol}`;  // qty left (default allday)
+        const lineText = `${nameCol} ${qtyCol}`;
         push({ id: `${iid}_item`, text: lineText, align: 'right', bold: true, dbl: true });
         if (!gp('OMIT_DINER_NAME'))
           push({ id: `${iid}_dname`, text: '   ישראל ישראלי', align: 'right', bold: false });
@@ -562,12 +547,12 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
   // ════════════════════════════════════════════════════
   // ── GENERAL (default) ───────────────────────────────
   // ════════════════════════════════════════════════════
-  // SEPARATE_BON_4_EVERY_COURSE: render one bon per course
   if (gp('SEPARATE_BON_4_EVERY_COURSE') && items.length > 0) {
     const courseGroups = groupByCourse(items);
     courseGroups.forEach(({ course, items: cItems }, ci) => {
       if (ci > 0) push({ id: `sep_course_${ci}`, sep: true });
       pushHeader(`c${ci}_`);
+      setZone('items');
       pushCourseHeader(course, `c${ci}`);
       const perDiner2 = Math.ceil(cItems.length / DEMO.NUMBER_OF_GUESTS);
       cItems.forEach((pi, pii) => {
@@ -579,19 +564,19 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
         if (!gp('SHORT_TICKET')) push({ id: `${iid2}_sep`, sep: true, thin: true });
       });
       push({ id: `c${ci}_items_s`, sep: true, solid: true });
+      setZone('footer');
       pushFooter(`c${ci}_`);
     });
     return els;
   }
 
   pushHeader('');
-  setZone('items');
+  // setZone('items') כבר נקרא בתוך pushHeader לפני hdr_s
 
   if (items.length > 0) {
     const dinersTotal = DEMO.NUMBER_OF_GUESTS;
     const perDiner    = Math.ceil(items.length / dinersTotal);
 
-    // apply HIDE params when summary sections active
     const hideBev    = gp('HIDE_BEV_ITEMS_IF_BEVERAGE_SUMMARY') && gp('INCLUDE_BEVERAGE_SUMMARY');
     const hideSauce  = gp('HIDE_SAUCE_ITEMS_IF_SAUCE_SUMMARY')  && gp('INCLUDE_SAUCE_SUMMARY');
     const hideInSum  = gp('HIDE_ITEMS_INCLUDED_IN_SUMMARY')     && gp('INCLUDE_SUMMARY_SECTION');
@@ -612,7 +597,6 @@ export function buildElements({ params, bonName, orderType, orderServiceType, pr
         const isFirst     = pii % perDiner === 0;
         const hasCourseTag = gp('COURSE_TAGS_BEFORE_ITEMS') && pii < 2;
 
-        // OMIT_ITEM_REMARKS_4_EXTERNAL_ORDER
         const isExternal = params?.ORDER_SOURCE === 'external';
         const omitRemarks = gp('OMIT_ITEM_REMARKS_4_EXTERNAL_ORDER') && isTD && isExternal;
 

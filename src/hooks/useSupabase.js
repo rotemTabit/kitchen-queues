@@ -225,7 +225,7 @@ export function useTags(type = null) {
   useEffect(() => {
     let q = supabase.from('tags').select('*').order('tag_name');
     if (type) q = q.eq('type', type);
-    q.then(({ data }) => setTags(data || []));
+    q.then(({ data, error }) => { if (error) console.error('useTags error:', error); setTags(data || []); });
   }, [type]);
   return tags;
 }
@@ -234,18 +234,18 @@ export function useWorkflowProfiles() {
   const [profiles, setProfiles] = useState([]);
   useEffect(() => {
     supabase.from('workflow_profiles').select('*').order('name')
-      .then(({ data }) => setProfiles(data || []));
+      .then(({ data, error }) => { if (error) console.error('useWorkflowProfiles error:', error); setProfiles(data || []); });
   }, []);
-  return profiles;
+  return profiles; // [{id, type, type_display_name, name}]
 }
 
 export function useMenuViews() {
   const [views, setViews] = useState([]);
   useEffect(() => {
     supabase.from('menu_views').select('*').order('name')
-      .then(({ data }) => setViews(data || []));
+      .then(({ data, error }) => { if (error) console.error('useMenuViews error:', error); setViews(data || []); });
   }, []);
-  return views;
+  return views; // [{id, name}]
 }
 
 export function useModifierGroups() {

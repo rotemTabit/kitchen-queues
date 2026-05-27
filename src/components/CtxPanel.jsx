@@ -87,7 +87,7 @@ useEffect(() => {
               placeholder="הזן ערך"
               style={{ flex: 1, fontSize: 11, padding: '3px 6px',
                        border: '1px solid var(--ba)', borderRadius: 5,
-                       background: 'white', color: 'var(--bd)' }}
+                       background: 'whi', color: 'var(--bd)' }}
             />
           )}
           <button onClick={() => remove(i)}

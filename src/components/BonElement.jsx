@@ -1,5 +1,4 @@
-export default function BonElement({ el, override = {}, selected, onSelect, onDragStart, onDragOver, onDrop, onDragEnd, flash = false, flashKey = 0 }) {
-  // flashKey changes force React to remount the animation
+export default function BonElement({ el, override = {}, selected, flash = false, flashKey = 0 }) {
   const e = {
     ...el,
     bold:  override.bold  !== undefined ? override.bold  : el.bold,
@@ -24,41 +23,17 @@ export default function BonElement({ el, override = {}, selected, onSelect, onDr
 
   if (el.sep) {
     return (
-      <div
-        className={`be${selected ? ' sel' : ''}`}
-        data-id={el.id}
-        data-zone={el.zone || 'items'}
-        draggable
-        onDragStart={() => onDragStart(el.id)}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-        onClick={() => onSelect(el.id)}
-        style={{ padding: '3px 0', position: 'relative' }}
-      >
+      <div className="be" data-id={el.id} data-zone={el.zone || 'items'} style={{ padding: '3px 0', position: 'relative' }}>
         {flash && <div key={flashKey} style={{ position:'absolute',inset:0,background:'rgba(26,74,58,0.25)',animation:'bon-flash 0.5s ease-out forwards',pointerEvents:'none',zIndex:1 }} />}
         <div style={{ borderTop: el.solid ? '1px solid #bbb' : '0.5px dashed #ccc', margin: '1px 10px' }} />
-        <span className="dh">⠿</span>
       </div>
     );
   }
 
   return (
-    <div
-      className={`be clickable${selected ? ' sel' : ''}`}
-      data-id={el.id}
-      data-zone={el.zone || 'items'}
-      style={{ ...style, position: 'relative' }}
-      draggable
-      onDragStart={() => onDragStart(el.id)}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      onClick={ev => { ev.stopPropagation(); onSelect(el.id); }}
-    >
+    <div className="be" data-id={el.id} data-zone={el.zone || 'items'} style={{ ...style, position: 'relative' }}>
       {flash && <div key={flashKey} style={{ position:'absolute',inset:0,background:'rgba(26,74,58,0.25)',animation:'bon-flash 0.5s ease-out forwards',pointerEvents:'none',zIndex:1 }} />}
       <span style={e.underline ? { textDecoration: 'underline' } : {}}>{el.text || ''}</span>
-      <span className="dh">⠿</span>
     </div>
   );
 }

@@ -74,35 +74,35 @@ export const CTX_ZONES = {
     cats: {
       'הגבלות הדפסה': [
         { id: 'EXCLUDE_TABLES_',
-          lbl: 'החרג טווח שולחנות',
-          sub: 'הגדר טווח שולחנות שהזמנות מהם לא יודפסו בעמדה זה. למשל מ-101 עד-110, בונים שהודפסו מטווח שולחנות זה לא יודפסו.',
+          lbl: 'הוצא טווח שולחנות',
+          sub: 'הגדר טווח שולחנות שלא יגיעו לתחנה זו. לדוגמה: 101:110 יוציא את שולחנות 101 עד 110. שימושי להפרדה בין אזורי ישיבה שונים.',
           templates: ['general','allday','perdiner'],
           type: 'range', noImpl: true },
 
         { id: 'EXCLUDE_PROFILE_',
-          lbl: 'החרג פרופיל עבודה',
-          sub: 'בחר פרופיל עבודה שהזמנות ממנו לא יודפסו בעמדה זו.',
+          lbl: 'הוצא פרופיל עבודה',
+          sub: 'בחר פרופיל עבודה שהזמנות ממנו לא יגיעו לתחנה זו. לדוגמה: מלצרי בר לא ישלחו בונות לגריל, או שולחנות חצר לא יגיעו למטבח הפנים.',
           templates: ['general','allday','perdiner'],
           type: 'multi', selectSrc: 'workflow_profiles',
           noImpl: true },
 
         { id: 'INCLUDE_PROFILE_',
-          lbl: 'הדפס רק מפרופיל עבודה נבחר',
-          sub: 'רק הזמנות מפרופיל העבודה הנבחר יודפסו בעמדה זו.',
+          lbl: 'הצג רק פרופיל עבודה',
+          sub: 'רק הזמנות מהפרופיל שתבחר יגיעו לתחנה הזו. שימושי כשרוצים שתחנה תקבל רק הזמנות מסוג מסוים, כמו בר שיקבל רק הזמנות שתייה.',
           templates: ['general','allday','perdiner'],
           type: 'multi', selectSrc: 'workflow_profiles',
           noImpl: true },
 
         { id: 'EXCLUDE_MENU_VIEW_',
-          lbl: 'החרגת  תצוגה',
-          sub: 'בחר תפריט תצוגה שפריטים שהוזמנו ממנה לא יודפסו בעמדה זו',
+          lbl: 'הוצא תפריט תצוגה',
+          sub: 'בחר תפריט תצוגה שפריטים ממנו לא יגיעו לתחנה זו. לדוגמה: פריטים מתפריט Wolt לא יוצגו בגריל הפנים, או תפריט בוקר לא יגיע לבר.',
           templates: ['general','allday','perdiner'],
           type: 'multi', selectSrc: 'menu_views',
           noImpl: true },
 
         { id: 'IGNORE_KIOSK_ORDERS',
           lbl: 'אל תדפיס הזמנות קיוסק',
-          sub: 'הזמנות שמקור ההזמנה שלהן הוא קיוסק לא יודפסו בעמדה זו. שימושי כאשר לקיוסק יש בון נפרד',
+          sub: 'הגדרה זו מונעת מהזמנות שהגיעו מקיוסק עצמי להגיע לתחנה. שימושי כשהקיוסק מחובר לפס ייצור נפרד.',
           templates: ['general','allday','perdiner'],
           noImpl: true },
       ],
@@ -178,7 +178,7 @@ export const CTX_ZONES = {
   header: {
     title: 'עריכת ראש הבון',
     cats: {
-      'הצגת מידע': [
+      'זמנים ומידע הזמנה': [
         { id: 'HEADER_TABLE_NUMBER',
           lbl: 'מספר שולחן בולט בראש הבון',
           sub: 'מדפיס את מספר השולחן, TA או משלוח בגדול בראש הדף',
@@ -232,26 +232,30 @@ export const CTX_ZONES = {
           parentId: 'ORDERER_ADDRESS_ON_HEADER' },
       ],
 
-      'הסרת מידע': [
+      'פרטי לקוח': [
         { id: 'OMIT_ORDER_TAGS',
-          lbl: 'הסתר הערות הזמנה',
-          sub: 'הערות כלליות כמו "אלרגיה" או "יום הולדת" לא יופיעו על הבון',
-          templates: ['general','allday','perdiner'] },
+          lbl: 'הצג הערות הזמנה',
+          sub: 'תגיות כלליות כמו "אלרגיה" או "יום הולדת" יופיעו על הבון',
+          templates: ['general','allday','perdiner'],
+          inverted: true },
 
         { id: 'OMIT_CUSTOMER_DETAILS',
-          lbl: 'הסתר שם וטלפון של הלקוח',
-          sub: 'פרטי הלקוח לא יודפסו על הבון — שימושי כשהמידע רגיש',
-          templates: ['general'] },
+          lbl: 'הצג שם וטלפון לקוח',
+          sub: 'פרטי הלקוח יודפסו על הבון',
+          templates: ['general'],
+          inverted: true },
 
         { id: 'OMIT_ORDERRER_TEL',
-          lbl: 'הסתר מספר טלפון',
-          sub: 'מסיר רק את הטלפון, השם עדיין יופיע',
-          templates: ['general'] },
+          lbl: 'הצג מספר טלפון',
+          sub: 'מספר הטלפון של המזמין יוצג על הבון',
+          templates: ['general'],
+          inverted: true },
 
         { id: 'OMIT_OTC_TYPE',
-          lbl: 'הסתר כותרת OTC',
-          sub: 'מסיר את התוויות "לשבת" / "לקחת" בהזמנות דלפק',
-          templates: ['general','allday','peritem','perdiner'] },
+          lbl: 'הצג כותרת OTC',
+          sub: 'התוויות "לשבת" / "לקחת" בהזמנות דלפק יוצגו',
+          templates: ['general','allday','peritem','perdiner'],
+          inverted: true },
       ],
 
       'גודל ומראה': [
@@ -305,7 +309,7 @@ export const CTX_ZONES = {
   items: {
     title: 'עריכת פריטים ומשנים',
     cats: {
-      'שם הפריט': [
+      'שמות ומזהים': [
         { id: 'IGNORE_ITEM_PRINT_NAME',
           lbl: 'השתמש בשם המנה הרגיל',
           sub: 'גם כשהוגדר שם מטבח ייעודי, יוצג שם המנה הרגיל',
@@ -327,7 +331,7 @@ export const CTX_ZONES = {
           templates: ['general'] },
       ],
 
-      'הצגת מידע': [
+      'מבנה פריטים': [
         { id: 'INCLUDE_DEFAULT_MODIFIERS',
           lbl: 'הצג תוספות ברירת מחדל',
           sub: 'תוספות שמגיעות עם המנה כברירת מחדל יוצגו גם כן על הבון',
@@ -366,9 +370,10 @@ export const CTX_ZONES = {
           templates: ['general'] },
 
         { id: 'OMIT_ITEM_REMARKS_4_EXTERNAL_ORDER',
-          lbl: 'הסתר הערות מממשקים חיצוניים',
-          sub: 'הערות שנכתבו ב-Wolt / Ten Bis וכד\' לא יודפסו על הבון',
-          templates: ['general','peritem'] },
+          lbl: 'הצג הערות ממשקים חיצוניים',
+          sub: 'הערות שנכתבו ב-Wolt / Ten Bis וכד\' יודפסו על הבון',
+          templates: ['general','peritem'],
+          inverted: true },
 
         { id: 'PRINT_ITEM_GROUP_NAME_',
           lbl: 'הצג שם קבוצת הפריטים',
@@ -382,21 +387,23 @@ export const CTX_ZONES = {
           templates: ['allday'] },
       ],
 
-      'הסרת מידע': [
+      'הסתרה ותגיות': [
         { id: 'IGNORE_ALL_MODIFIERS',
           lbl: 'הסתר משנים',
           sub: 'משנים ובחירות לא יודפסו — למעט מידת עשייה שתמיד מוצגת',
           templates: ['general'] },
 
         { id: 'OMIT_DINER_NAME',
-          lbl: 'הסתר שמות סועדים',
-          sub: 'שם הסועד שהזמין לא יוצג מתחת לפריטים',
-          templates: ['general','allday'] },
+          lbl: 'הצג שמות סועדים',
+          sub: 'שם הסועד שהזמין יוצג מתחת לפריטים',
+          templates: ['general','allday'],
+          inverted: true },
 
         { id: 'NO_COURSE_NAME',
-          lbl: 'הסתר כותרות קורס',
-          sub: 'המנות יסודרו לפי קורס (ראשונות, עיקריות...) אך ללא כותרת מעל כל קבוצה',
-          templates: ['general','allday','perdiner'] },
+          lbl: 'הצג כותרות קורס',
+          sub: 'כותרות כמו "ראשונות" / "עיקריות" יוצגו מעל כל קבוצה',
+          templates: ['general','allday','perdiner'],
+          inverted: true },
 
         { id: 'FILTER_OFFER_MODIFIERS_BY_MODIFER_GROUP_',
           lbl: 'סנן קבוצות משנים (מהפריט)',
@@ -405,10 +412,11 @@ export const CTX_ZONES = {
           type: 'multi', selectSrc: 'modifier_groups' },
 
         { id: 'OMIT_BON_TAGS',
-          lbl: 'הסתר תגיות על פריטים ספציפיים',
-          sub: 'מסיר תגיות שמוצמדות לפריטים בודדים (כמו "מנה עלינו" או "ללא חיוב"). שימושי כשהמידע הזה אינו רלוונטי לתחנת ההכנה.',
+          lbl: 'הצג תגיות על פריטים',
+          sub: 'תגיות שמוצמדות לפריטים בודדים כמו "מנה עלינו" או "ללא חיוב" יוצגו',
           templates: ['general'],
-          noImpl: true },
+          noImpl: true,
+          inverted: true },
       ],
 
       'סינון קורסים': [
@@ -520,7 +528,7 @@ export const CTX_ZONES = {
   footer: {
     title: 'עריכת תחתית הבון',
     cats: {
-      'הצגת מידע': [
+      'מידע ומקורות': [
         { id: 'ADD_SERVER_NAME',
           lbl: 'שם המלצר בתחתית',
           sub: 'מוסיף את שם המלצר שהזמין בתחתית הדף',
@@ -581,14 +589,15 @@ export const CTX_ZONES = {
           templates: ['general'] },
       ],
 
-      'הסרת מידע': [
+      'פרטי לקוח בתחתית': [
         { id: 'OMIT_BOTTOM_ORDERER_DETAILS',
-          lbl: 'הסתר פרטי לקוח מהתחתית',
-          sub: 'שם, טלפון וכתובת לא יוצגו בתחתית הבון',
-          templates: ['general'] },
+          lbl: 'הצג פרטי לקוח בתחתית',
+          sub: 'שם, טלפון וכתובת יוצגו בתחתית הבון',
+          templates: ['general'],
+          inverted: true },
       ],
 
-      'שם הבון בתחתית': [
+      'שם הבון': [
         { id: 'ADD_BON_NAME_BOTTOM',
           lbl: 'שם תחנת ההכנה בתחתית',
           sub: 'מוסיף את שם הבון (תחנת ההכנה) בתחתית הדף',
@@ -629,10 +638,11 @@ export const CTX_ZONES = {
           parentId: 'INCLUDE_BEVERAGE_SUMMARY' },
 
         { id: 'HIDE_BEV_ITEMS_IF_BEVERAGE_SUMMARY',
-          lbl: 'הסתר משקאות מרשימת הפריטים',
-          sub: 'המשקאות יופיעו רק בסיכום ולא ברשימה הרגילה',
+          lbl: 'הצג משקאות ברשימת הפריטים',
+          sub: 'המשקאות יופיעו גם ברשימה הרגילה וגם בסיכום',
           templates: ['general'],
-          parentId: 'INCLUDE_BEVERAGE_SUMMARY' },
+          parentId: 'INCLUDE_BEVERAGE_SUMMARY',
+          inverted: true },
 
         { id: 'INCLUDE_SAUCE_SUMMARY',
           lbl: 'סיכום רטבים',
@@ -642,10 +652,11 @@ export const CTX_ZONES = {
           children: ['HIDE_SAUCE_ITEMS_IF_SAUCE_SUMMARY'] },
 
         { id: 'HIDE_SAUCE_ITEMS_IF_SAUCE_SUMMARY',
-          lbl: 'הסתר רטבים מרשימת הפריטים',
-          sub: 'הרטבים יופיעו רק בסיכום ולא ברשימה הרגילה',
+          lbl: 'הצג רטבים ברשימת הפריטים',
+          sub: 'הרטבים יופיעו גם ברשימה הרגילה וגם בסיכום',
           templates: ['general'],
-          parentId: 'INCLUDE_SAUCE_SUMMARY' },
+          parentId: 'INCLUDE_SAUCE_SUMMARY',
+          inverted: true },
 
         { id: 'INCLUDE_SUMMARY_SECTION',
           lbl: 'סיכום משולב',
@@ -655,10 +666,11 @@ export const CTX_ZONES = {
           children: ['HIDE_ITEMS_INCLUDED_IN_SUMMARY'] },
 
         { id: 'HIDE_ITEMS_INCLUDED_IN_SUMMARY',
-          lbl: 'הסתר פריטים מהרשימה',
-          sub: 'פריטים שמופיעים בסיכום לא יוצגו פעמיים ברשימה הרגילה',
+          lbl: 'הצג פריטי סיכום ברשימה',
+          sub: 'פריטים שמופיעים בסיכום יוצגו גם ברשימה הרגילה',
           templates: ['general'],
-          parentId: 'INCLUDE_SUMMARY_SECTION' },
+          parentId: 'INCLUDE_SUMMARY_SECTION',
+          inverted: true },
 
         { id: 'ENABLE_FORCE_AGGREGATED_ITEMS_SECTION',
           lbl: 'סיכום מאוחד',

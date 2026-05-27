@@ -2,14 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { MonitorPlay, Merge, ListChecks, Printer, Copy, Trash2, Plus, Minus, Settings, X, Check, PenLine, ReceiptText } from "lucide-react";
 import PrinterPicker from "./PrinterPicker";
 import MultiSelect from "./multiSelect";
-import ParamsPanel from "./paramsPanel";
 import ParamsTab from "./ParamsTab";
 import { useTemplates, usePrinters, useParamGroups, useCategoryTree, useWorkflowProfiles, useMenuViews } from "../hooks/useSupabase";
 import { CTX_ZONES } from '../data/bonConfig';
 import ParamBot from "./Parambot";
 import TreeSelect from "./TreeSelect";
 import ItemsModal from "./ItemsModal";
-import CtxPanel from "./CtxPanel";
 
 // TMPLS → from Supabase via useTemplates()
 

@@ -3,13 +3,11 @@ import { Save, RotateCcw, Copy, Trash2, ReceiptText } from "lucide-react";
 import SettingsPanel from "./components/settingsPanel";
 import ItemPicker from "./components/ItemPicker";
 import BonElement from "./components/BonElement";
-import ZoneButtons from "./components/ZoneButtons";
-import CtxPanel from "./components/CtxPanel";
-import FloatingToolbar from "./components/FloatingToolbar";
 import OtBar from "./components/OtBar";
 import { useMenu, useMenuWithGroups, useBon, useBons, saveBon, deleteBon } from "./hooks/useSupabase";
 import { buildElements } from "./utils/buildElements";
 import { buildPayload } from "./utils/buildPayload";
+import { CTX_ZONES } from "./data/bonConfig";
 
 // inverted params — ברירת מחדל true ב-UI (דולק)
 const INVERTED_PARAMS = new Set(['OMIT_ORDER_TAGS', 'OMIT_CUSTOMER_DETAILS', 'OMIT_ORDERRER_TEL', 'OMIT_OTC_TYPE', 'OMIT_DINER_NAME', 'NO_COURSE_NAME', 'OMIT_ITEM_REMARKS_4_EXTERNAL_ORDER', 'OMIT_BON_TAGS', 'OMIT_BOTTOM_ORDERER_DETAILS', 'HIDE_BEV_ITEMS_IF_BEVERAGE_SUMMARY', 'HIDE_SAUCE_ITEMS_IF_SAUCE_SUMMARY', 'HIDE_ITEMS_INCLUDED_IN_SUMMARY']);
@@ -255,14 +253,11 @@ export default function App() {
   const [refreshKey, setRefreshKey]           = useState(0);
   const [elOrd, setElOrd]                     = useState([]);
   const [elSt, setElSt]                       = useState({});
-  const [selId, setSelId]                     = useState(null);
   const [dragId, setDragId]                   = useState(null);
-  const [ctxZone, setCtxZone]                 = useState(null);
   const [zoneFilter, setZoneFilter]           = useState([]);
   const [flashZone, setFlashZone]             = useState(null);
   const [flashCount, setFlashCount]           = useState(0);
   const flashTimer = useRef(null);
-  const [selBtnPos, setSelBtnPos]             = useState({ top: 0, left: 0 });
   const [orderTypes, setOrderTypes]           = useState([]);
   const [sources, setSources]                 = useState([]);
   const [pickerOpen, setPickerOpen]           = useState(false);
@@ -513,28 +508,26 @@ export default function App() {
     requestAnimationFrame(() => setParamsTabActive(true));
   };
   const [paramsTabActive, setParamsTabActive] = useState(false);
+  const [hoveredZone, setHoveredZone]         = useState(null);
 
   // ── Params ──
+  const getParamZone = (id) => {
+    for (const [zoneKey, zone] of Object.entries(CTX_ZONES)) {
+      for (const catParams of Object.values(zone.cats || {})) {
+        if (catParams.some(p => p.id === id)) return zoneKey;
+      }
+    }
+    return null;
+  };
+
   const onParamChange = (id, val) => {
     setParams(p => ({ ...p, [id]: Array.isArray(val) ? val : val ? 1 : 0 }));
-    // determine which zone this param belongs to and flash it
-    const zoneKey = ctxZone;
-    if (zoneKey) {
+    const paramZone = getParamZone(id);
+    const flashTarget = paramZone === 'general' ? '__all__' : paramZone;
+    if (flashTarget) {
       if (flashTimer.current) clearTimeout(flashTimer.current);
-      setFlashZone(zoneKey);
+      setFlashZone(flashTarget);
       setFlashCount(c => c + 1);
-      // scroll the zone into view if out of viewport
-      const container = prevRef?.current;
-      if (container) {
-        const els = Array.from(container.querySelectorAll(`.be[data-zone="${zoneKey}"]`));
-        if (els.length > 0) {
-          const first = els[0].getBoundingClientRect();
-          const cRect = container.getBoundingClientRect();
-          if (first.top < cRect.top || first.bottom > cRect.bottom) {
-            els[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
-      }
       flashTimer.current = setTimeout(() => setFlashZone(null), 600);
     }
   };
@@ -567,39 +560,7 @@ export default function App() {
     setDragId(null);
   };
 
-  // ── Selection ──
-  const handleSelect = (id) => {
-    setSelId(id);
-    setTimeout(() => {
-      const el = bonPaperRef.current?.querySelector(`[data-id="${id}"]`);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        setSelBtnPos({ top: r.bottom + 5, left: Math.max(2, Math.min(r.left - 16, window.innerWidth - 335)) });
-      }
-    }, 0);
-  };
-  const handleDesel  = () => setSelId(null);
-  const handleToggle = (prop) => {
-    setElSt(prev => {
-      const s = { ...(prev[selId] || {}) };
-      if (prop === "bsq") { s.bsq = !s.bsq; if (s.bsq) s.brd = false; }
-      else if (prop === "brd") { s.brd = !s.brd; if (s.brd) s.bsq = false; }
-      else s[prop] = !s[prop];
-      return { ...prev, [selId]: s };
-    });
-  };
-  const handleSetAlign = (a) => setElSt(p => ({ ...p, [selId]: { ...(p[selId] || {}), align: a } }));
-  const handleAdjSize  = (d) => setElSt(p => {
-    const s = { ...(p[selId] || {}) };
-    s.size = Math.max(8, Math.min(26, (s.size || 11) + d));
-    return { ...p, [selId]: s };
-  });
 
-  useEffect(() => {
-    const handler = e => { if (!e.target.closest(".be") && !e.target.closest(".stb")) handleDesel(); };
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
-  }, []);
 
   const TEMPLATE_NAMES = {
   general:  'בון כללי',
@@ -687,7 +648,7 @@ export default function App() {
             onSelect={handleOT}
           />
 
-          <div className="prev" ref={prevRef} onClick={handleDesel}>
+          <div className="prev" ref={prevRef}>
             <div style={{ width: 290, display: "flex", flexDirection: "column", gap: 6 }}>
               {/* Row 1: main picker button + clear */}
               <div style={{ display: "flex", gap: 6 }}>
@@ -750,14 +711,33 @@ export default function App() {
                     <div
                       key={zone}
                       onClick={() => handleZoneOpen(zone)}
+                      onMouseEnter={() => setHoveredZone(zone)}
+                      onMouseLeave={() => setHoveredZone(null)}
                       style={{
                         cursor: 'pointer',
-                        outline: isFlashing ? '2px solid rgba(29,158,117,0.6)' : '2px solid transparent',
-                        transition: 'outline 0.3s ease',
+                        position: 'relative',
+                        outline: isFlashing
+                          ? '2px solid rgba(29,158,117,0.6)'
+                          : hoveredZone === zone
+                          ? '2px solid rgba(15,88,83,0.35)'
+                          : '2px solid transparent',
+                        background: hoveredZone === zone ? 'rgba(15,88,83,0.04)' : 'transparent',
+                        transition: 'outline 0.15s ease, background 0.15s ease',
                         borderRadius: 2,
                       }}
-                      title={zone === 'header' ? 'ראש הבון' : zone === 'items' ? 'פריטים ומשנים' : 'תחתית הבון'}
                     >
+                      {hoveredZone === zone && (
+                        <div style={{
+                          position: 'absolute', top: 2, left: 6,
+                          fontSize: 9, fontWeight: 700, color: 'var(--bm)',
+                          fontFamily: 'var(--sans)', opacity: 0.7,
+                          pointerEvents: 'none', zIndex: 2,
+                          background: 'rgba(255,255,255,0.85)',
+                          padding: '1px 5px', borderRadius: 4,
+                        }}>
+                          {zone === 'header' ? 'ראש הבון' : zone === 'items' ? 'פריטים ומשנים' : 'תחתית הבון'}
+                        </div>
+                      )}
                       {zoneEls.map(el => (
                         <BonElement
                           key={el.id}
@@ -794,24 +774,11 @@ export default function App() {
             onParamsTabActivated={() => setParamsTabActive(false)}
             onZoneFilterClear={() => setZoneFilter([])}
           />
-          {/* ── CTX PANEL ── */}
-          <CtxPanel zone={ctxZone} onClose={() => setCtxZone(null)} params={params} onParamChange={onParamChange} template={template} onBonFlash={() => { setFlashZone('__all__'); setFlashCount(c => c+1); setTimeout(() => setFlashZone(null), 600); }} />
         </div>
       </div>
 
-      {/* ── ZONE EDIT BUTTONS ── */}
-      <ZoneButtons bonPaperRef={bonPaperRef} containerRef={prevRef} ctxZone={zoneFilter.length === 1 ? zoneFilter[0] : null} onOpen={handleZoneOpen} />
 
-      {/* ── FLOATING TOOLBAR ── */}
-      <FloatingToolbar
-        selId={selId}
-        elSt={elSt}
-        pos={selBtnPos}
-        onToggle={handleToggle}
-        onSetAlign={handleSetAlign}
-        onAdjSize={handleAdjSize}
-        onDesel={handleDesel}
-      />
+
 
       {/* ── ITEM PICKER ── */}
       {pickerOpen && (
